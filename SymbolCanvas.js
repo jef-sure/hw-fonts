@@ -5,11 +5,15 @@ const SymbolCanvas = {
         this.symbolCtx = ctx;
         this.symbolCanvas = c;
         this.deviceScaling = window.devicePixelRatio || 1;
-        let height = window.innerHeight / 2;
-        this.symbolCellSize = Math.ceil((height - 255 / this.deviceScaling) / 256);
-        this.symbolSize = this.symbolCellSize * 256 + 255 / this.deviceScaling;
+        this.supLineWidth = 1;
+        let theight = window.innerHeight / 2;
+        this.symbolCellSize = Math.max(Math.ceil((theight - 255 * this.supLineWidth) / 256), 3);
+        this.symbolSize = this.symbolCellSize * 256 + 255 * this.supLineWidth;
         c.height = this.symbolSize;
         c.width = this.symbolSize;
+        c.style.width = c.width + 'px';
+        c.style.height = c.height + 'px';
+        // ctx.scale(this.deviceScaling, this.deviceScaling);
         this.drawSymbolBackground();
     },
     computed: {
@@ -52,14 +56,15 @@ const SymbolCanvas = {
             let svss = this.symbolCtx.strokeStyle;
             this.symbolCtx.strokeStyle = 'lightgrey';
             let svlw = this.symbolCtx.lineWidth;
-            this.symbolCtx.lineWidth = 1 / this.deviceScaling;
-            let lo = this.symbolCtx.lineWidth / 2;
+            this.symbolCtx.lineWidth = this.supLineWidth;
+            let lo = this.supLineWidth / 2;
+            let cwlw = this.symbolCellSize + this.supLineWidth;
             for (let ln = 1; ln < 256; ++ln) {
                 this.symbolCtx.beginPath();
-                this.symbolCtx.moveTo(lo + ln * (this.symbolCellSize + this.symbolCtx.lineWidth), lo + 0);
-                this.symbolCtx.lineTo(lo + ln * (this.symbolCellSize + this.symbolCtx.lineWidth), lo + this.symbolSize - 1);
-                this.symbolCtx.moveTo(lo + 0, lo + ln * (this.symbolCellSize + this.symbolCtx.lineWidth));
-                this.symbolCtx.lineTo(lo + this.symbolSize - 1, lo + ln * (this.symbolCellSize + this.symbolCtx.lineWidth));
+                this.symbolCtx.moveTo(ln * cwlw, 0);
+                this.symbolCtx.lineTo(ln * cwlw, this.symbolSize);
+                this.symbolCtx.moveTo(0, ln * cwlw);
+                this.symbolCtx.lineTo(this.symbolSize, ln * cwlw);
                 this.symbolCtx.stroke();
             }
             this.symbolCtx.lineWidth = svlw;
@@ -67,25 +72,23 @@ const SymbolCanvas = {
             this.symbolCtx.fillStyle = svfs;
         },
         point2Canvas(x, y) {
-            let lo = 1 / this.deviceScaling / 2;
-            let cwlw = this.symbolCellSize + lo * 2;
+            let cwlw = this.symbolCellSize + this.supLineWidth;
             return [Math.floor(x / cwlw), Math.floor(y / cwlw)];
         },
         canvas2Point(x, y) {
-            let lo = 1 / this.deviceScaling / 2;
-            let cwlw = this.symbolCellSize + lo * 2;
-            return [lo + x * cwlw + this.symbolCellSize / 2, lo + y * cwlw + this.symbolCellSize / 2];
+            let cwlw = this.symbolCellSize + this.supLineWidth;
+            return [x * cwlw, y * cwlw];
         },
         drawPointCanvas(x, y, color) {
             let svss = this.symbolCtx.strokeStyle;
             this.symbolCtx.strokeStyle = 'lightgrey';
             let svfs = this.symbolCtx.fillStyle;
             this.symbolCtx.fillStyle = color ? 'black' : 'white';
-            let lo = 1 / this.deviceScaling / 2;
+            let lo = this.supLineWidth / 2;
             let [px, py] = this.canvas2Point(x, y);
-            this.symbolCtx.fillRect(px - this.symbolCellSize / 2, py - this.symbolCellSize / 2, this.symbolCellSize, this.symbolCellSize);
+            this.symbolCtx.fillRect(px, py, this.symbolCellSize, this.symbolCellSize);
             this.symbolCtx.beginPath();
-            this.symbolCtx.rect(px - this.symbolCellSize / 2 - lo, py - this.symbolCellSize / 2 - lo, this.symbolCellSize + lo * 2, this.symbolCellSize + lo * 2);
+            this.symbolCtx.rect(px - lo, py - lo, this.symbolCellSize + lo * 2, this.symbolCellSize + lo * 2);
             this.symbolCtx.stroke();
             this.symbolCtx.fillStyle = svfs;
             this.symbolCtx.strokeStyle = svss;
