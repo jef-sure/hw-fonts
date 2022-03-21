@@ -39,7 +39,7 @@ class Curves {
         if (ps.x == points[1].x && ps.x == points[2].x && ps.x == points[3].x && ps.y == points[1].y && ps.y == points[2].y &&
             ps.y == points[3].y) return;
         for (let i = 0; i <= Curves.segments(); i++) {
-            let pe = cubic_bezier_point(i / Curves.segments(), points);
+            let pe = Curves.cubicBezierPoint(i / Curves.segments(), points);
             object.drawLine(ps.x, ps.y, pe.x, pe.y, color);
             ps = pe;
         }
