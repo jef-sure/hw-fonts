@@ -1,65 +1,130 @@
 const SymbolCanvas = {
+    data() {
+        return {
+            noCurves: [],
+        };
+    },
     mounted() {
         let c = document.getElementById("cnv-symbol");
         let ctx = c.getContext("2d");
         this.symbolCtx = ctx;
         this.symbolCanvas = c;
         this.deviceScaling = window.devicePixelRatio || 1;
-        let height = window.innerHeight / 2;
-        this.symbolCellSize = Math.ceil((height - 255 / this.deviceScaling) / 256);
-        this.symbolSize = this.symbolCellSize * 256 + 255 / this.deviceScaling;
+        this.supLineWidth = 1;
+        let theight = window.innerHeight / 2;
+        this.symbolCellSize = Math.max(Math.ceil((theight - 255 * this.supLineWidth) / 256), 3);
+        this.symbolSize = this.symbolCellSize * 256 + 255 * this.supLineWidth;
         c.height = this.symbolSize;
         c.width = this.symbolSize;
-        this.drawSymbolBackground();
+        c.style.width = c.width + 'px';
+        c.style.height = c.height + 'px';
+        // ctx.scale(this.deviceScaling, this.deviceScaling);
+        this.draw();
     },
     computed: {
-        offsetActiveAreaX() {
-            return this.$store.state.offsetActiveAreaX;
+        symbolOffsetX() {
+            return this.$store.state.font.symbolOffsetX;
         },
-        offsetActiveAreaY() {
-            return this.$store.state.offsetActiveAreaY;
+        symbolOffsetY() {
+            return this.$store.state.font.symbolOffsetY;
         },
-        activeAreaSizeX() {
-            return this.$store.state.activeAreaSizeX;
+        symbolSizeX() {
+            return this.$store.state.font.symbolSizeX;
         },
-        activeAreaSizeY() {
-            return this.$store.state.activeAreaSizeY;
-        }
+        symbolSizeY() {
+            return this.$store.state.font.symbolSizeY;
+        },
+        symbolCurves() {
+            const cp = this.$store.state.symbolEdit.codePoint;
+            const cs = this.$store.state.font.codePoints[cp];
+            return cs ? cs : this.noCurves;
+        },
+        font() {
+            return this.$store.state.font;
+        },
+        dataVersion() {
+            return this.$store.state.symbolEdit.dataVersion;
+        },
     },
     watch: {
-        offsetActiveAreaX() {
-            this.drawSymbolBackground();
+        symbolOffsetX() {
+            this.draw();
         },
-        offsetActiveAreaY() {
-            this.drawSymbolBackground();
+        symbolOffsetY() {
+            this.draw();
         },
-        activeAreaSizeX() {
-            this.drawSymbolBackground();
+        symbolSizeX() {
+            this.draw();
         },
-        activeAreaSizeY() {
-            this.drawSymbolBackground();
+        symbolSizeY() {
+            this.draw();
         },
+        symbolCurves() {
+            this.draw();
+        },
+        dataVersion() {
+            this.draw();
+        }
     },
     methods: {
+        draw() {
+            this.drawSymbolBackground();
+            const curves = this.symbolCurves;
+            let svss = this.symbolCtx.strokeStyle;
+            let svlw = this.symbolCtx.lineWidth;
+            let cs = this.symbolCellSize / 2;
+            for (const c of curves) {
+                if (c.length === 4) {
+                    Curves.drawBezier4p(this, c, 1);
+                }
+                if (c.length >= 1) {
+                    const p = c[0];
+                    this.drawPointCanvas(p.x, p.y, 1, 1);
+                }
+                this.symbolCtx.lineWidth = 1 / this.deviceScaling / 2;
+                this.symbolCtx.strokeStyle = 'blue';
+                for (let i = 1; i < c.length; ++i) {
+                    const ps = c[i - 1];
+                    const pe = c[i];
+                    let [sx, sy] = this.canvas2Point(ps.x, ps.y);
+                    let [ex, ey] = this.canvas2Point(pe.x, pe.y);
+                    this.drawPointCanvas(pe.x, pe.y, 1, 1);
+                    this.symbolCtx.beginPath();
+                    this.symbolCtx.moveTo(sx + cs, sy + cs);
+                    this.symbolCtx.lineTo(ex + cs, ey + cs);
+                    this.symbolCtx.stroke();
+                }
+            }
+            let [sx, sy] = this.canvas2Point(0, this.font.baseLine + this.symbolOffsetY);
+            let [ex, ey] = this.canvas2Point(255, this.font.baseLine + this.symbolOffsetY);
+            this.symbolCtx.strokeStyle = 'red';
+            this.symbolCtx.beginPath();
+            this.symbolCtx.moveTo(sx + cs, sy + cs);
+            this.symbolCtx.lineTo(ex + cs, ey + cs);
+            this.symbolCtx.stroke();
+            this.symbolCtx.lineWidth = svlw;
+            this.symbolCtx.strokeStyle = svss;
+        },
         drawSymbolBackground() {
             let svfs = this.symbolCtx.fillStyle;
             this.symbolCtx.fillStyle = 'grey';
             this.symbolCtx.fillRect(0, 0, this.symbolSize, this.symbolSize);
             this.symbolCtx.fillStyle = 'white';
-            let [rx, ry] = this.canvas2Point(this.offsetActiveAreaX, this.offsetActiveAreaY);
-            let [rxe, rye] = this.canvas2Point(this.offsetActiveAreaX + this.activeAreaSizeX, this.offsetActiveAreaY + this.activeAreaSizeY);
+            let [rx, ry] = this.canvas2Point(this.symbolOffsetX, this.symbolOffsetY);
+            let [rxe, rye] = this.canvas2Point(this.symbolOffsetX + this.symbolSizeX, this.symbolOffsetY + this.symbolSizeY);
             this.symbolCtx.fillRect(rx, ry, rxe - rx, rye - ry);
             let svss = this.symbolCtx.strokeStyle;
             this.symbolCtx.strokeStyle = 'lightgrey';
             let svlw = this.symbolCtx.lineWidth;
-            this.symbolCtx.lineWidth = 1 / this.deviceScaling;
-            let lo = this.symbolCtx.lineWidth / 2;
+            this.symbolCtx.lineWidth = this.supLineWidth;
+            let lo = this.supLineWidth / 2;
+            let cwlw = this.symbolCellSize + this.supLineWidth;
             for (let ln = 1; ln < 256; ++ln) {
                 this.symbolCtx.beginPath();
-                this.symbolCtx.moveTo(lo + ln * (this.symbolCellSize + this.symbolCtx.lineWidth), lo + 0);
-                this.symbolCtx.lineTo(lo + ln * (this.symbolCellSize + this.symbolCtx.lineWidth), lo + this.symbolSize - 1);
-                this.symbolCtx.moveTo(lo + 0, lo + ln * (this.symbolCellSize + this.symbolCtx.lineWidth));
-                this.symbolCtx.lineTo(lo + this.symbolSize - 1, lo + ln * (this.symbolCellSize + this.symbolCtx.lineWidth));
+                this.symbolCtx.moveTo(ln * cwlw, 0);
+                this.symbolCtx.lineTo(ln * cwlw, this.symbolSize);
+                this.symbolCtx.moveTo(0, ln * cwlw);
+                this.symbolCtx.lineTo(this.symbolSize, ln * cwlw);
                 this.symbolCtx.stroke();
             }
             this.symbolCtx.lineWidth = svlw;
@@ -67,26 +132,28 @@ const SymbolCanvas = {
             this.symbolCtx.fillStyle = svfs;
         },
         point2Canvas(x, y) {
-            let lo = 1 / this.deviceScaling / 2;
-            let cwlw = this.symbolCellSize + lo * 2;
+            let cwlw = this.symbolCellSize + this.supLineWidth;
             return [Math.floor(x / cwlw), Math.floor(y / cwlw)];
         },
         canvas2Point(x, y) {
-            let lo = 1 / this.deviceScaling / 2;
-            let cwlw = this.symbolCellSize + lo * 2;
-            return [lo + x * cwlw + this.symbolCellSize / 2, lo + y * cwlw + this.symbolCellSize / 2];
+            let cwlw = this.symbolCellSize + this.supLineWidth;
+            return [x * cwlw, y * cwlw];
         },
-        drawPointCanvas(x, y, color) {
+        drawPointCanvas(x, y, color, thick) {
             let svss = this.symbolCtx.strokeStyle;
             this.symbolCtx.strokeStyle = 'lightgrey';
             let svfs = this.symbolCtx.fillStyle;
             this.symbolCtx.fillStyle = color ? 'black' : 'white';
-            let lo = 1 / this.deviceScaling / 2;
+            let lo = this.supLineWidth / 2;
             let [px, py] = this.canvas2Point(x, y);
-            this.symbolCtx.fillRect(px - this.symbolCellSize / 2, py - this.symbolCellSize / 2, this.symbolCellSize, this.symbolCellSize);
-            this.symbolCtx.beginPath();
-            this.symbolCtx.rect(px - this.symbolCellSize / 2 - lo, py - this.symbolCellSize / 2 - lo, this.symbolCellSize + lo * 2, this.symbolCellSize + lo * 2);
-            this.symbolCtx.stroke();
+            if (thick) {
+                this.symbolCtx.fillRect(px - lo, py - lo, this.symbolCellSize + lo * 2, this.symbolCellSize + lo * 2);
+            } else {
+                this.symbolCtx.fillRect(px, py, this.symbolCellSize, this.symbolCellSize);
+                this.symbolCtx.beginPath();
+                this.symbolCtx.rect(px - lo, py - lo, this.symbolCellSize + lo * 2, this.symbolCellSize + lo * 2);
+                this.symbolCtx.stroke();
+            }
             this.symbolCtx.fillStyle = svfs;
             this.symbolCtx.strokeStyle = svss;
         },
@@ -168,24 +235,52 @@ const SymbolCanvas = {
                 }
             }
         },
-
-        onclick(event) {
-            console.log('canvas click: ', event);
+        onmousemove(event) {
             var rect = event.target.getBoundingClientRect();
             var x = event.clientX - rect.left;
             var y = event.clientY - rect.top;
-            var msg = `point: ${x} ${y}`;
-            console.log(msg);
-            let [px, py] = this.point2Canvas(x, y);
-            this.drawPointCanvas(px, py, 1);
-        }
-    },
-    data() {
-        return {
-            message: 'Hello Vue!!'
-        };
+            let [cX, cY] = this.point2Canvas(x, y);
+            this.$store.commit('setSymbolMouseXY', {
+                x: x,
+                y: y,
+                curveX: cX,
+                curveY: cY,
+            });
+        },
+        onmousedown(event) {
+            var rect = event.target.getBoundingClientRect();
+            var x = event.clientX - rect.left;
+            var y = event.clientY - rect.top;
+            let [cX, cY] = this.point2Canvas(x, y);
+            this.$store.commit('setSymbolMouseCaptured', {
+                isCaptured: true,
+                x: x,
+                y: y,
+                curveX: cX,
+                curveY: cY,
+            });
+            this.$store.commit('setSymbolMouseXY', {
+                x: x,
+                y: y,
+                curveX: cX,
+                curveY: cY,
+            });
+        },
+        onmouseup(event) {
+            var rect = event.target.getBoundingClientRect();
+            var x = event.clientX - rect.left;
+            var y = event.clientY - rect.top;
+            let [cX, cY] = this.point2Canvas(x, y);
+            this.$store.commit('setSymbolMouseCaptured', {
+                isCaptured: false,
+                x: x,
+                y: y,
+                curveX: cX,
+                curveY: cY,
+            });
+        },
     },
     template: `
-        <canvas id="cnv-symbol" @click="onclick"></canvas>
+        <canvas id="cnv-symbol" @mousemove="onmousemove" @mousedown="onmousedown" @mouseup="onmouseup"></canvas>
     `
 };
