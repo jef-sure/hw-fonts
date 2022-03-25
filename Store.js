@@ -2,16 +2,21 @@ function getMouseCaptured(state, x, y) {
     let ret = [];
     const cp = state.symbolEdit.codePoint;
     if (cp) {
-        for (let pi = 0; pi < state.font.codePoints[cp].length; ++pi) {
-            const c = state.font.codePoints[cp][pi];
-            for (let ci = 0; ci < c.length; ++ci) {
-                const point = c[ci];
-                if (point.x === x && point.y === y) {
-                    ret.push({
-                        element: 'curve',
-                        index: pi,
-                        pointIndex: ci
-                    });
+        for (const fk in state.font.codePoints[cp]) {
+            if (!Array.isArray(state.font.codePoints[cp][fk])) continue;
+            for (let pi = 0; pi < state.font.codePoints[cp][fk].length; ++pi) {
+                const cs = state.font.codePoints[cp][fk][pi];
+                const c = cs.points;
+                for (let ci = 0; ci < c.length; ++ci) {
+                    const point = c[ci];
+                    if (point.x === x && point.y === y) {
+                        ret.push({
+                            element: cs.type, // curve, dot, line, curve3p 
+                            segment: fk, // mainSegments, postSegments, beginConnection, endConnection
+                            index: pi, // index inside segments
+                            pointIndex: ci // index inside element points
+                        });
+                    }
                 }
             }
         }
@@ -25,6 +30,32 @@ function getMouseCaptured(state, x, y) {
     return ret;
 }
 
+const ElementTypes = {
+    dot: {
+        len: 1,
+        name: "Dot"
+    },
+    line: {
+        len: 2,
+        name: "Line"
+    },
+    curve3p: {
+        len: 3,
+        name: "Curve 3p"
+    },
+    curve: {
+        len: 4,
+        name: "Curve"
+    },
+};
+
+const SegmentTypes = {
+    mainSegments: "Main segments",
+    postSegments: "Postponed segments",
+    beginConnection: "Begin connection",
+    endConnection: "End connection"
+};
+
 const Store = Vuex.createStore({
     state() {
         return {
@@ -37,9 +68,19 @@ const Store = Vuex.createStore({
                     isCaptured: false,
                     capturedObjects: [],
                 },
+                newSegmentType: 'mainSegments', // postSegments, beginConnection, endConnection
+                newElementType: 'curve', // , dot, line, curve3p
                 codePoint: 48,
                 dataVersion: 0,
+                shownSegments: {
+                    mainSegments: true,
+                    postSegments: false,
+                    beginConnection: false,
+                    endConnection: false
+                },
             },
+            uploadErrorMessage: '',
+            fontSequence: 0,
             font: {
                 name: 'font',
                 baseLine: 100,
@@ -47,27 +88,35 @@ const Store = Vuex.createStore({
                 symbolOffsetY: 64,
                 symbolSizeX: 128,
                 symbolSizeY: 128,
+                widthType: 'fixed', // proportional
                 extraLines: [],
                 codePoints: {
-                    48: [
-                        [{
-                            x: 71,
-                            y: 129
-                        }, {
-                            x: 101,
-                            y: 16
-                        }, {
-                            x: 93,
-                            y: 65
-                        }, {
-                            x: 94,
-                            y: 164
-                        }]
-                    ]
+                    48: {
+                        mainSegments: [{
+                            type: 'curve', // dot, line, curve3p
+                            points: [{
+                                x: 71,
+                                y: 129
+                            }, {
+                                x: 101,
+                                y: 16
+                            }, {
+                                x: 93,
+                                y: 65
+                            }, {
+                                x: 94,
+                                y: 164
+                            }]
+                        }],
+                        postSegments: [],
+                        beginConnection: [],
+                        endConnection: [],
+                        width: 0
+                    }
                 }
             },
             symbolsBlock: {
-                start: 0,
+                begin: 0,
                 blockWidth: 16,
                 blockLength: 16
             }
@@ -81,19 +130,46 @@ const Store = Vuex.createStore({
             try {
                 let myResponse = JSON.parse(text);
                 let font = {};
+                let absent = [];
                 for (let fk in state.font) {
                     if (fk in myResponse)
                         font[fk] = myResponse[fk];
                     else
-                        return;
+                        absent.push(fk);
                 }
-                commit('setFont', font);
+                if (absent.length) {
+                    commit('setUploadErrorMessage', 'Bad font format. Absent keys: ' + absent.join(", "));
+                } else {
+                    commit('setFont', font);
+                }
             } catch (e) {}
         },
     },
     mutations: {
+        setShownSegment(state, segments) {
+            for (const segment in segments) {
+                if (segment in state.symbolEdit.shownSegments)
+                    state.symbolEdit.shownSegments[segment] = segments[segment] ? true : false;
+            }
+            state.symbolEdit.dataVersion++;
+        },
+        setSymbolsBlock(state, uindex) {
+            let begin = parseInt(UnicodeRanges[uindex]['data-begin'], 16);
+            let end = parseInt(UnicodeRanges[uindex]['data-end'], 16);
+            state.symbolsBlock.begin = begin;
+            state.symbolsBlock.blockLength = parseInt((end + 16 - begin) / 16);
+        },
+        setNewElementType(state, type) {
+            state.symbolEdit.newElementType = type;
+        },
+        setNewSegmentType(state, type) {
+            state.symbolEdit.newSegmentType = type;
+        },
         setFontName(state, name) {
             state.font.name = name;
+        },
+        setUploadErrorMessage(state, message) {
+            state.uploadErrorMessage = message;
         },
         setFont(state, font) {
             if (!(state.symbolEdit.codePoint in font.codePoints)) {
@@ -101,6 +177,7 @@ const Store = Vuex.createStore({
                 state.symbolEdit.codePoint = cs.length ? cs[0] : 48;
             }
             state.font = font;
+            state.fontSequence++;
             state.symbolEdit.dataVersion++;
         },
         setSymbolOffset(state, offsetXY) {
@@ -120,9 +197,9 @@ const Store = Vuex.createStore({
                 const cp = state.symbolEdit.codePoint;
                 const cs = state.font.codePoints[cp];
                 for (const c of state.symbolEdit.mouse.capturedObjects) {
-                    if (c.element === 'curve') {
-                        cs[c.index][c.pointIndex].x = xy.curveX;
-                        cs[c.index][c.pointIndex].y = xy.curveY;
+                    if ('segment' in c) {
+                        cs[c.segment][c.index].points[c.pointIndex].x = xy.curveX;
+                        cs[c.segment][c.index].points[c.pointIndex].y = xy.curveY;
                     } else if (c.element === 'baseLine') {
                         state.font.baseLine = xy.curveY - state.font.symbolOffsetY;
                     }
@@ -139,19 +216,45 @@ const Store = Vuex.createStore({
                 state.symbolEdit.mouse.capturedObjects = [];
             } else if (capture.isCaptured && !state.symbolEdit.mouse.isCaptured) {
                 let co = getMouseCaptured(state, capture.curveX, capture.curveY);
+                /*
+                                        [{
+                                            element: type, // curve, dot, line, curve3p, baseLine
+                                            segment: fk, // mainSegments, postSegments, beginConnection, endConnection
+                                            index: pi, // index inside segments
+                                            pointIndex: ci // index inside element points
+                                        }, ...]
+                */
                 if (co.length === 0) {
                     const cp = state.symbolEdit.codePoint;
                     const cs = state.font.codePoints[cp];
-                    if (cs.length && cs[cs.length - 1].length < 4) {
-                        cs[cs.length - 1].push({
-                            x: capture.curveX,
-                            y: capture.curveY
+                    let isIncompleteSegment = (segment) => {
+                        let sa = cs[segment];
+                        if (sa.length && sa[sa.length - 1].points.length < ElementTypes[sa[sa.length - 1].type].len) return true;
+                        return false;
+                    };
+                    let foundIncomplete = false;
+                    for (const segment in SegmentTypes) {
+                        foundIncomplete = isIncompleteSegment(segment);
+                        if (foundIncomplete) {
+                            let sa = cs[segment];
+                            sa[sa.length - 1].points.push({
+                                x: capture.curveX,
+                                y: capture.curveY
+                            });
+                            break;
+                        }
+                    }
+                    if (!foundIncomplete) {
+                        let sa = cs[state.symbolEdit.newSegmentType];
+                        sa.push({
+                            type: state.symbolEdit.newElementType,
+                            points: [{
+                                x: capture.curveX,
+                                y: capture.curveY
+                            }]
                         });
-                    } else {
-                        cs.push([{
-                            x: capture.curveX,
-                            y: capture.curveY
-                        }]);
+                        if (!state.symbolEdit.shownSegments[state.symbolEdit.newSegmentType])
+                            state.symbolEdit.shownSegments[state.symbolEdit.newSegmentType] = true;
                     }
                     co = getMouseCaptured(state, capture.curveX, capture.curveY);
                 }
@@ -167,9 +270,12 @@ const Store = Vuex.createStore({
         incrementDataVersion(state) {
             state.symbolEdit.dataVersion++;
         },
-        deleteCurve(state, curveIndex) {
+        deleteCurve(state, {
+            curveIndex,
+            segment
+        }) {
             const cp = state.symbolEdit.codePoint;
-            let cs = state.font.codePoints[cp];
+            let cs = state.font.codePoints[cp][segment];
             cs.splice(curveIndex, 1);
             state.symbolEdit.mouse.isCaptured = false;
             state.symbolEdit.dataVersion++;
