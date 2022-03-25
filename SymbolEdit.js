@@ -1,14 +1,24 @@
 const SymbolEdit = {
-    mounted() {},
+    mounted() {
+        this.setSymbolsBlock();
+    },
     methods: {
         onCurveChange() {
             this.$store.commit('incrementDataVersion');
         },
-        deleteCurve(curveIndex) {
-            this.$store.commit('deleteCurve', curveIndex);
+        deleteCurve(curveIndex, segment) {
+            this.$store.commit('deleteCurve', {
+                curveIndex: curveIndex,
+                segment: segment
+            });
         },
         downloadFont() {
-            this.$refs.downloadFont.click();
+            let blob = new Blob([JSON.stringify(this.$store.state.font, null, '    ')], {
+                type: 'application/json'
+            });
+            if (this.downloadUrl) URL.revokeObjectURL(this.downloadUrl);
+            this.downloadUrl = URL.createObjectURL(blob);
+            this.$nextTick(() => this.$refs.downloadFont.click());
         },
         uploadFont(event) {
             const reader = new FileReader();
@@ -17,8 +27,43 @@ const SymbolEdit = {
             };
             reader.readAsText(event.target.files[0]);
         },
+        setSymbolsBlock() {
+            this.$store.commit('setSymbolsBlock', this.selectedBlockIndex);
+        },
+        isSegmentComplete(segment) {
+            let curves = this.symbolCurves;
+            if (curves === this.noCurves) return true;
+            let sa = curves[segment];
+            if (!sa.length) return true;
+            let lc = sa[sa.length - 1];
+            return this.ElementTypes[lc.type].len === lc.points.length;
+        },
+        isShownSegment(segment) {
+            return this.$store.state.symbolEdit.shownSegments[segment];
+        },
+        setShownSegment(event, segment) {
+            let change = {};
+            change[segment] = !this.$store.state.symbolEdit.shownSegments[segment];
+            this.$store.commit('setShownSegment', change);
+        },
     },
     computed: {
+        newSegmentType: {
+            get() {
+                return this.$store.state.symbolEdit.newSegmentType;
+            },
+            set(type) {
+                this.$store.commit('setNewSegmentType', type);
+            },
+        },
+        newElementType: {
+            get() {
+                return this.$store.state.symbolEdit.newElementType;
+            },
+            set(type) {
+                this.$store.commit('setNewElementType', type);
+            },
+        },
         font() {
             return this.$store.state.font;
         },
@@ -82,21 +127,33 @@ const SymbolEdit = {
                 this.$store.commit('setBaseLine', y);
             },
         },
+        uploadErrorMessage: {
+            get() {
+                return this.$store.state.uploadErrorMessage;
+            },
+            set(m) {
+                this.$store.commit('setUploadErrorMessage', m);
+            },
+        },
         symbolCurves() {
             const cp = this.$store.state.symbolEdit.codePoint;
+            if (!cp) return this.noCurves;
             const cs = this.$store.state.font.codePoints[cp];
             return cs ? cs : this.noCurves;
         },
-        downloadAfterClick() {
-            let blob = new Blob([JSON.stringify(this.$store.state.font, null, '    ')], {
-                type: 'application/json'
-            });
-            if (this.$refs.downloadFont && this.$refs.downloadFont.href) {
-                URL.revokeObjectURL(this.$refs.downloadFont.href);
-                this.downloadUrl = undefined;
-            }
-            this.downloadUrl = URL.createObjectURL(blob);
+        fontSequence() {
+            return this.$store.state.fontSequence;
         },
+        symbolsBlockBegin() {
+            return this.$store.state.symbolsBlock.begin;
+        },
+        symbolsBlockWidth() {
+            return this.$store.state.symbolsBlock.blockWidth;
+        },
+        symbolsBlockLength() {
+            return this.$store.state.symbolsBlock.blockLength;
+        },
+
     },
     watch: {
         font() {
@@ -111,7 +168,10 @@ const SymbolEdit = {
         return {
             noCurves: [],
             downloadUrl: undefined,
-
+            UnicodeRanges: UnicodeRanges,
+            SegmentTypes: SegmentTypes,
+            ElementTypes: ElementTypes,
+            selectedBlockIndex: 0,
         };
     },
     template: `
@@ -121,7 +181,8 @@ const SymbolEdit = {
                     <SymbolCanvas></SymbolCanvas>
                 </div>
                 <div style="display: table-cell;vertical-align: top;">
-                    <table>
+                    <table class="table">
+                    <tbody>
                     <tr>
                         <td>
                             Font name
@@ -134,7 +195,7 @@ const SymbolEdit = {
                         <td>
                             Active area offset
                         </td>
-                        <td style="width: 60px">X:
+                        <td style="width: 5em;">X:
                             <input class="coord" v-model.number="symbolOffsetX" @blur="if(!this.symbolOffsetX) this.symbolOffsetX = 0;"> 
                         </td>
                         <td>Y:
@@ -162,28 +223,80 @@ const SymbolEdit = {
                     </tr>
                     <tr>
                         <td colspan="3">
-                            <a style="display: none" :download="fontName+'.json'" :href="downloadUrl" @click="downloadAfterClick" ref="downloadFont"></a>
-                            Download font '{{fontName}}' <button @click="downloadFont">⭳</button>
+                            <a style="display: none" :download="fontName+'.json'" :href="downloadUrl" ref="downloadFont"></a>
+                            Download font '{{fontName}}' <button @click="downloadFont" class="btn btn-secondary">⭳</button>
                         </td>
                     </tr>
                     <tr>
-                        <td colspan="3">
-                            Upload font <input type="file" multiple="false" accept=".json,application/json" @change="uploadFont"/>
+                        <td colspan="2">
+                            Upload font 
+                            <input type="file" multiple="false" accept=".json,application/json" @change="uploadFont" :key="fontSequence" style="display: none" ref="uploadFont"/>
+                            <button @click="this.$refs.uploadFont.click();" class="btn btn-secondary">Browse ...</button>
+                        </td>
+                        <td>
+                            <span style="color: red;">{{uploadErrorMessage}}&nbsp;<button v-if="uploadErrorMessage" @click="uploadErrorMessage='';">x</button></span>
                         </td>
                     </tr>
+                    </tbody>
                     </table>
-                    <table>
-                        <tr><th colspan="6">Segments</th></tr>
-                        <tr v-for="(curve, ci) in symbolCurves">
-                            <td>{{ci}}:</td>
-                            <td v-for="(point, index) in curve">
+                    <div style="display: table-row">
+                        <div style="display: table-cell">
+                            New segment type
+                        </div>
+                        <div style="display: table-cell">
+                        <select v-model="newSegmentType">
+                            <option v-for="(segmentName, segment) in SegmentTypes" :value="segment">{{segmentName}}</option>
+                        </select>
+                        </div>
+                    </div>
+                    <div style="display: table-row">
+                        <div style="display: table-cell">
+                            New element type
+                        </div>
+                        <div style="display: table-cell">
+                        <select v-model="newElementType">
+                            <option v-for="(es, element) in ElementTypes" :value="element">{{es.name}}</option>
+                        </select>
+                        </div>
+                    </div>
+                    <table class="table" style="width: auto;" v-for="(segmentName, segment) in SegmentTypes">
+                        <tr><th colspan="7">
+                            <input  type="checkbox" :checked="isShownSegment(segment)" @change="(event) => setShownSegment(event, segment)" />
+                            {{segmentName}}
+                        </th></tr>
+                        <tr :class="{incomplete: !isSegmentComplete(segment) && ci === symbolCurves[segment].length-1 }" v-for="(curve, ci) in symbolCurves[segment]">
+                        <td>{{ci}}:</td>
+                        <th>{{ElementTypes[curve.type].name}}</th>
+                        <td v-for="(point, index) in curve.points">
                             (<input class="coord" v-model.number="point.x" @input="onCurveChange">, <input class="coord" v-model.number="point.y" @input="onCurveChange">) <span v-if="index < curve.length - 1">-</span>
                             </td>
-                            <td><button style="color: red" @click="deleteCurve(ci)">x</button></td>
+                            <td><button @click="deleteCurve(ci, segment)" class="btn btn-sm btn-remove">x</button></td>
                         </tr>
                     </table>
                 </div>
+                <div style="display: table-cell;vertical-align: top;">
+                    <table class="table box-shadow">
+                    <thead>
+                    <tr><th colspan="17">Symbols
+                        <label><select v-model="selectedBlockIndex" @change="setSymbolsBlock">
+                            <option v-for="(range, ri) in UnicodeRanges" :value="ri">{{range["data-begin"]}} - {{range["data-end"]}}: {{range.name}}</option>
+                        </select></label>
+                    </th></tr>
+                    <tr><td></td><th v-for="ci in symbolsBlockWidth">{{(ci-1).toString(16)}}</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="ri in symbolsBlockLength">
+                            <th>{{(symbolsBlockBegin + (ri - 1) * symbolsBlockWidth).toString(16).padStart(4,0)}}</th>
+                            <td v-for="ci in symbolsBlockWidth">
+                                <span>{{String.fromCodePoint(symbolsBlockBegin + (ri - 1) * symbolsBlockWidth + ci - 1)}}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                    </table>
+                </div>
             </div>
+            <div style="display: table-row"><div style="display: table-cell">
+            </div></div>
         </div>
     `
 };
