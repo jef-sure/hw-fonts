@@ -1,4 +1,84 @@
 class SymbolCurves {
+    static drawLine(object, x1, y1, x2, y2, color) {
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+        if (dx === 0 && dy === 0) {
+            object.drawPointCanvas(x1, y1, color);
+            return;
+        }
+        if (dx === 0) {
+            let sy = dy < 0 ? -1 : 1;
+            for (; y1 != y2; y1 += sy)
+                object.drawPointCanvas(x1, y1, color);
+            return;
+        }
+        if (dy === 0) {
+            let sx = dx < 0 ? -1 : 1;
+            for (; x1 != x2; x1 += sx)
+                object.drawPointCanvas(x1, y1, color);
+            return;
+        }
+        if (Math.abs(dx) === Math.abs(dy)) {
+            if (dx < 0) {
+                [x1, y1, x2, y2] = [x2, y2, x1, y1];
+                dx = -dx;
+                dy = -dy;
+            }
+            let sy = dy < 0 ? -1 : 1;
+            while (true) {
+                object.drawPointCanvas(x1, y1, color);
+                if (x1 === x2) break;
+                x1++;
+                y1 += sy;
+            }
+            return;
+        }
+        /* My modification of Bresenham's line algorithm */
+        if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0) {
+                [x1, y1, x2, y2] = [x2, y2, x1, y1];
+                dx = -dx;
+                dy = -dy;
+            }
+            let sy = dy < 0 ? -1 : 1;
+            if (dy < 0) dy = -dy;
+            let err = 0;
+            ++dx;
+            ++dy;
+            while (true) {
+                object.drawPointCanvas(x1, y1, color);
+                if (x1 === x2) break;
+                x1++;
+                err += dy;
+                if (err >= dx) {
+                    err -= dx;
+                    y1 += sy;
+                }
+            }
+        } else {
+            if (dy < 0) {
+                [x1, y1, x2, y2] = [x2, y2, x1, y1];
+                dx = -dx;
+                dy = -dy;
+            }
+            let sx = dx < 0 ? -1 : 1;
+            if (dx < 0) dx = -dx;
+            let err = 0;
+            ++dx;
+            ++dy;
+            while (true) {
+                object.drawPointCanvas(x1, y1, color);
+                if (y1 === y2) break;
+                y1++;
+                err += dx;
+                if (err >= dy) {
+                    err -= dy;
+                    x1 += sx;
+                }
+            }
+        }
+    }
+
     static drawShownSegments(object, with_aux_lines) {
         const curves = object.symbolCurves;
         if (curves === object.noCurves) return;
