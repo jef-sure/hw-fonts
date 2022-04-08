@@ -146,6 +146,34 @@ const Store = Vuex.createStore({
         },
     },
     mutations: {
+        setCurrentCodepoint(state, codepoint) {
+            state.symbolEdit.codePoint = codepoint;
+            state.symbolEdit.dataVersion++;
+        },
+        addCodepoint(state, codepoint) {
+            state.font.codePoints[codepoint] = {
+                mainSegments: [],
+                postSegments: [],
+                beginConnection: [],
+                endConnection: [],
+                width: 0
+            };
+            state.symbolEdit.codePoint = codepoint;
+            state.symbolEdit.dataVersion++;
+        },
+        removeCodepoint(state, codepoint) {
+            let cps = Object.keys(state.font.codePoints);
+            cps.sort((a, b) => a - b);
+            codepoint = parseInt(codepoint);
+            if (cps.length > 1) {
+                delete state.font.codePoints[codepoint];
+                let fi = cps.findIndex(e => parseInt(e) === codepoint);
+                if (fi === 0) ++fi;
+                else --fi;
+                state.symbolEdit.codePoint = cps[fi];
+                state.symbolEdit.dataVersion++;
+            }
+        },
         setShownSegment(state, segments) {
             for (const segment in segments) {
                 if (segment in state.symbolEdit.shownSegments)

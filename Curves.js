@@ -42,15 +42,15 @@ class Curves {
         };
     }
 
-    static segments() {
+    static segmentPieces() {
         return 30.0;
     }
 
     static drawBezier3p(object, points, color) {
         let ps = points[0];
         if (ps.x == points[1].x && ps.x == points[2].x && ps.y == points[1].y && ps.y == points[2].y) return;
-        for (let i = 0; i <= Curves.segments(); i++) {
-            let pe = Curves.quadraticBezierPoint(i / Curves.segments(), points);
+        for (let i = 0; i <= Curves.segmentPieces(); i++) {
+            let pe = Curves.quadraticBezierPoint(i / Curves.segmentPieces(), points);
             object.drawLine(ps.x, ps.y, pe.x, pe.y, color);
             ps = pe;
         }
@@ -60,8 +60,8 @@ class Curves {
         let ps = points[0];
         if (ps.x == points[1].x && ps.x == points[2].x && ps.x == points[3].x && ps.y == points[1].y && ps.y == points[2].y &&
             ps.y == points[3].y) return;
-        for (let i = 0; i <= Curves.segments(); i++) {
-            let pe = Curves.cubicBezierPoint(i / Curves.segments(), points);
+        for (let i = 0; i <= Curves.segmentPieces(); i++) {
+            let pe = Curves.cubicBezierPoint(i / Curves.segmentPieces(), points);
             object.drawLine(ps.x, ps.y, pe.x, pe.y, color);
             ps = pe;
         }

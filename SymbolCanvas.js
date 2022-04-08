@@ -68,54 +68,7 @@ const SymbolCanvas = {
     methods: {
         draw() {
             this.drawSymbolBackground();
-            const curves = this.symbolCurves;
-            if (curves === this.noCurves) return;
-            let svss = this.symbolCtx.strokeStyle;
-            let svlw = this.symbolCtx.lineWidth;
-            let cs = this.symbolCellSize / 2;
-            let drawSegments = (segments) => {
-                for (const c of segments) {
-                    if (c.type === 'curve' && c.points.length === 4) {
-                        Curves.drawBezier4p(this, c.points, 1);
-                    } else if (c.type === 'line' && c.points.length === 2) {
-                        this.drawLine(c.points[0].x, c.points[0].y, c.points[1].x, c.points[1].y, 1);
-                    } else if (c.type === 'dot' && c.points.length === 1) {
-                        this.drawPointCanvas(c.points[0].x, c.points[0].y, 1);
-                    } else if (c.type === 'curve3p' && c.points.length === 3) {
-                        Curves.drawBezier3p(this, c.points, 1);
-                    }
-                    if (c.type !== 'dot' && c.points.length >= 1) {
-                        const p = c.points[0];
-                        this.drawPointCanvas(p.x, p.y, 'blue', 1);
-                        this.symbolCtx.lineWidth = 1 / this.deviceScaling / 2;
-                        this.symbolCtx.strokeStyle = 'blue';
-                        for (let i = 1; i < c.points.length; ++i) {
-                            const ps = c.points[i - 1];
-                            const pe = c.points[i];
-                            let [sx, sy] = this.canvas2Point(ps.x, ps.y);
-                            let [ex, ey] = this.canvas2Point(pe.x, pe.y);
-                            this.drawPointCanvas(pe.x, pe.y, 'blue', 1);
-                            this.symbolCtx.beginPath();
-                            this.symbolCtx.moveTo(sx + cs, sy + cs);
-                            this.symbolCtx.lineTo(ex + cs, ey + cs);
-                            this.symbolCtx.stroke();
-                        }
-                    }
-                }
-            };
-            for (const segment in SegmentTypes) {
-                if (this.$store.state.symbolEdit.shownSegments[segment])
-                    drawSegments(curves[segment]);
-            }
-            let [sx, sy] = this.canvas2Point(0, this.font.baseLine + this.symbolOffsetY);
-            let [ex, ey] = this.canvas2Point(255, this.font.baseLine + this.symbolOffsetY);
-            this.symbolCtx.strokeStyle = 'red';
-            this.symbolCtx.beginPath();
-            this.symbolCtx.moveTo(sx + cs, sy + cs);
-            this.symbolCtx.lineTo(ex + cs, ey + cs);
-            this.symbolCtx.stroke();
-            this.symbolCtx.lineWidth = svlw;
-            this.symbolCtx.strokeStyle = svss;
+            SymbolCurves.drawShownSegments(this, true);
         },
         drawSymbolBackground() {
             let svfs = this.symbolCtx.fillStyle;
@@ -203,7 +156,7 @@ const SymbolCanvas = {
                 }
                 return;
             }
-            /* My modification of Bresenham's line algorithm 
+            /* My modification of Bresenham's line algorithm */
             if (Math.abs(dx) > Math.abs(dy)) {
                 if (dx < 0) {
                     [x1, y1, x2, y2] = [x2, y2, x1, y1];
@@ -247,7 +200,7 @@ const SymbolCanvas = {
                     }
                 }
             }
-            */
+            /*
             let err;
             if (Math.abs(dx) > Math.abs(dy)) {
                 if (dx < 0) {
@@ -289,7 +242,8 @@ const SymbolCanvas = {
                         err -= dy;
                     }
                 } while (y1++ != y2);
-            }
+            } 
+            */
         },
         onmousemove(event) {
             var rect = event.target.getBoundingClientRect();

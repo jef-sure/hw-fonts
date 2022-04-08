@@ -1,6 +1,10 @@
 const SymbolImage = {
     props: {
         codePoint: Number,
+        scale: {
+            type: Number,
+            default: 1
+        }
     },
     data() {
         return {
@@ -8,16 +12,12 @@ const SymbolImage = {
         };
     },
     mounted() {
-        let c = this.$refs.canvas;
+        let c = this.$refs.symbol;
         let ctx = c.getContext("2d");
         this.symbolCtx = ctx;
-        this.symbolCanvas = c;
         this.deviceScaling = window.devicePixelRatio || 1;
-        this.supLineWidth = 1 / this.deviceScaling;
-        c.height = this.symbolSizeY;
-        c.width = this.symbolSizeX;
-        c.style.width = c.width + 'px';
-        c.style.height = c.height + 'px';
+        this.supLineWidth = 1;
+        this.setCanvasSize();
         this.draw();
     },
     computed: {
@@ -28,14 +28,17 @@ const SymbolImage = {
             return this.$store.state.font.symbolOffsetY;
         },
         symbolSizeX() {
-            return this.$store.state.font.symbolSizeX;
+            if (this.$store.state.font.widthType === 'fixed') {
+                return Math.round(this.$store.state.font.symbolSizeX * this.scale);
+            } else {
+                return Math.round(this.$store.state.font.codePoints[this.codePoint].width * this.scale);
+            }
         },
         symbolSizeY() {
-            return this.$store.state.font.symbolSizeY;
+            return Math.round(this.$store.state.font.symbolSizeY * this.scale);
         },
         symbolCurves() {
-            const cp = this.$store.state.symbolEdit.codePoint;
-            const cs = this.$store.state.font.codePoints[cp];
+            const cs = this.$store.state.font.codePoints[this.codePoint];
             return cs ? cs : this.noCurves;
         },
         font() {
@@ -53,9 +56,11 @@ const SymbolImage = {
             this.draw();
         },
         symbolSizeX() {
+            this.setCanvasSize();
             this.draw();
         },
         symbolSizeY() {
+            this.setCanvasSize();
             this.draw();
         },
         symbolCurves() {
@@ -68,93 +73,36 @@ const SymbolImage = {
     methods: {
         draw() {
             this.drawSymbolBackground();
-            const curves = this.symbolCurves;
-            let svss = this.symbolCtx.strokeStyle;
-            let svlw = this.symbolCtx.lineWidth;
-            let cs = this.symbolCellSize / 2;
-            for (const c of curves) {
-                if (c.length === 4) {
-                    Curves.drawBezier4p(this, c, 1);
-                }
-                if (c.length >= 1) {
-                    const p = c[0];
-                    this.drawPointCanvas(p.x, p.y, 'blue', 1);
-                }
-                this.symbolCtx.lineWidth = 1 / this.deviceScaling / 2;
-                this.symbolCtx.strokeStyle = 'blue';
-                for (let i = 1; i < c.length; ++i) {
-                    const ps = c[i - 1];
-                    const pe = c[i];
-                    let [sx, sy] = this.canvas2Point(ps.x, ps.y);
-                    let [ex, ey] = this.canvas2Point(pe.x, pe.y);
-                    this.drawPointCanvas(pe.x, pe.y, 1, 1);
-                    this.symbolCtx.beginPath();
-                    this.symbolCtx.moveTo(sx + cs, sy + cs);
-                    this.symbolCtx.lineTo(ex + cs, ey + cs);
-                    this.symbolCtx.stroke();
-                }
-            }
-            let [sx, sy] = this.canvas2Point(0, this.font.baseLine + this.symbolOffsetY);
-            let [ex, ey] = this.canvas2Point(255, this.font.baseLine + this.symbolOffsetY);
-            this.symbolCtx.strokeStyle = 'red';
-            this.symbolCtx.beginPath();
-            this.symbolCtx.moveTo(sx + cs, sy + cs);
-            this.symbolCtx.lineTo(ex + cs, ey + cs);
-            this.symbolCtx.stroke();
-            this.symbolCtx.lineWidth = svlw;
-            this.symbolCtx.strokeStyle = svss;
+            SymbolCurves.drawShownSegments(this, false);
         },
         drawSymbolBackground() {
             let svfs = this.symbolCtx.fillStyle;
-            this.symbolCtx.fillStyle = 'grey';
-            this.symbolCtx.fillRect(0, 0, this.symbolSize, this.symbolSize);
             this.symbolCtx.fillStyle = 'white';
-            let [rx, ry] = this.canvas2Point(this.symbolOffsetX, this.symbolOffsetY);
-            let [rxe, rye] = this.canvas2Point(this.symbolOffsetX + this.symbolSizeX, this.symbolOffsetY + this.symbolSizeY);
-            this.symbolCtx.fillRect(rx, ry, rxe - rx, rye - ry);
-            let svss = this.symbolCtx.strokeStyle;
-            this.symbolCtx.strokeStyle = 'lightgrey';
-            let svlw = this.symbolCtx.lineWidth;
-            this.symbolCtx.lineWidth = this.supLineWidth;
-            let lo = this.supLineWidth / 2;
-            let cwlw = this.symbolCellSize + this.supLineWidth;
-            for (let ln = 1; ln < 256; ++ln) {
-                this.symbolCtx.beginPath();
-                this.symbolCtx.moveTo(ln * cwlw, 0);
-                this.symbolCtx.lineTo(ln * cwlw, this.symbolSize);
-                this.symbolCtx.moveTo(0, ln * cwlw);
-                this.symbolCtx.lineTo(this.symbolSize, ln * cwlw);
-                this.symbolCtx.stroke();
-            }
-            this.symbolCtx.lineWidth = svlw;
-            this.symbolCtx.strokeStyle = svss;
+            this.symbolCtx.fillRect(0, 0, this.symbolSizeX, this.symbolSizeY);
             this.symbolCtx.fillStyle = svfs;
+        },
+        setCanvasSize() {
+            let c = this.$refs.symbol;
+            c.height = this.symbolSizeY;
+            c.width = this.symbolSizeX;
+            c.style.width = c.width + 'px';
+            c.style.height = c.height + 'px';
         },
         point2Canvas(x, y) {
-            let cwlw = this.symbolCellSize + this.supLineWidth;
-            return [Math.floor(x / cwlw), Math.floor(y / cwlw)];
+            return [Math.floor(x / this.scale - this.symbolOffsetX), Math.floor(y / this.scale - this.symbolOffsetY)];
         },
         canvas2Point(x, y) {
-            let cwlw = this.symbolCellSize + this.supLineWidth;
-            return [x * cwlw, y * cwlw];
+            return [(x - this.symbolOffsetX) * this.scale, (y - this.symbolOffsetY) * this.scale];
         },
-        drawPointCanvas(x, y, color, thick) {
-            let svss = this.symbolCtx.strokeStyle;
-            this.symbolCtx.strokeStyle = 'lightgrey';
+        drawPointCanvas(x, y, color) {
             let svfs = this.symbolCtx.fillStyle;
             this.symbolCtx.fillStyle = Number.isInteger(color) ? (color ? 'black' : 'white') : color;
-            let lo = this.supLineWidth / 2;
             let [px, py] = this.canvas2Point(x, y);
-            if (thick) {
-                this.symbolCtx.fillRect(px - lo, py - lo, this.symbolCellSize + lo * 2, this.symbolCellSize + lo * 2);
-            } else {
-                this.symbolCtx.fillRect(px, py, this.symbolCellSize, this.symbolCellSize);
-                this.symbolCtx.beginPath();
-                this.symbolCtx.rect(px - lo, py - lo, this.symbolCellSize + lo * 2, this.symbolCellSize + lo * 2);
-                this.symbolCtx.stroke();
-            }
+            let lo = this.scale / 2;
+            this.symbolCtx.beginPath();
+            this.symbolCtx.arc(px + lo, py + lo, lo, 0, 2 * Math.PI);
+            this.symbolCtx.fill();
             this.symbolCtx.fillStyle = svfs;
-            this.symbolCtx.strokeStyle = svss;
         },
         drawLine(x1, y1, x2, y2, color) {
             let dx = x2 - x1;
@@ -190,6 +138,7 @@ const SymbolImage = {
                 }
                 return;
             }
+            /* My modification of Bresenham's line algorithm */
             if (Math.abs(dx) > Math.abs(dy)) {
                 if (dx < 0) {
                     [x1, y1, x2, y2] = [x2, y2, x1, y1];
@@ -233,53 +182,53 @@ const SymbolImage = {
                     }
                 }
             }
-        },
-        onmousemove(event) {
-            var rect = event.target.getBoundingClientRect();
-            var x = event.clientX - rect.left;
-            var y = event.clientY - rect.top;
-            let [cX, cY] = this.point2Canvas(x, y);
-            this.$store.commit('setSymbolMouseXY', {
-                x: x,
-                y: y,
-                curveX: cX,
-                curveY: cY,
-            });
-        },
-        onmousedown(event) {
-            var rect = event.target.getBoundingClientRect();
-            var x = event.clientX - rect.left;
-            var y = event.clientY - rect.top;
-            let [cX, cY] = this.point2Canvas(x, y);
-            this.$store.commit('setSymbolMouseCaptured', {
-                isCaptured: true,
-                x: x,
-                y: y,
-                curveX: cX,
-                curveY: cY,
-            });
-            this.$store.commit('setSymbolMouseXY', {
-                x: x,
-                y: y,
-                curveX: cX,
-                curveY: cY,
-            });
-        },
-        onmouseup(event) {
-            var rect = event.target.getBoundingClientRect();
-            var x = event.clientX - rect.left;
-            var y = event.clientY - rect.top;
-            let [cX, cY] = this.point2Canvas(x, y);
-            this.$store.commit('setSymbolMouseCaptured', {
-                isCaptured: false,
-                x: x,
-                y: y,
-                curveX: cX,
-                curveY: cY,
-            });
+            /*
+            let err;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx < 0) {
+                    [x1, y1, x2, y2] = [x2, y2, x1, y1];
+                    dx = -dx;
+                    dy = -dy;
+                }
+                let sy = dy < 0 ? -1 : 1;
+                if (dy < 0) dy = -dy;
+                err = dx / 2;
+                let sp = x1;
+                do {
+                    err += dy;
+                    if (err >= dx || x1 == x2) {
+                        for (let i = sp; i < x1 + 1; ++i)
+                            this.drawPointCanvas(i, y1, color);
+                        sp = x1 + 1;
+                        y1 += sy;
+                        err -= dx;
+                    }
+                } while (x1++ != x2);
+            } else {
+                if (dy < 0) {
+                    [x1, y1, x2, y2] = [x2, y2, x1, y1];
+                    dx = -dx;
+                    dy = -dy;
+                }
+                let sx = dx < 0 ? -1 : 1;
+                err = dy / 2;
+                if (dx < 0) dx = -dx;
+                let sp = y1;
+                do {
+                    err += dx;
+                    if (err >= dy || y1 == y2) {
+                        for (let i = 0; i < y1 - sp + 1; ++i)
+                            this.drawPointCanvas(x1, sp + i, color);
+                        sp = y1 + 1;
+                        x1 += sx;
+                        err -= dy;
+                    }
+                } while (y1++ != y2);
+            } 
+            */
         },
     },
     template: `
-        <canvas ref="canvas"></canvas>
+        <canvas ref="symbol"></canvas>
     `
 };
