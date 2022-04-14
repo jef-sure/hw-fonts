@@ -1,11 +1,24 @@
+const SegmentTypes = {
+    mainSegments: "Main segments",
+    postSegments: "Postponed segments",
+    beginConnection: "Begin connection",
+    endConnection: "End connection",
+    auxilarySegments: "Auxilary font segments"
+};
+
 function getMouseCaptured(state, x, y) {
     let ret = [];
     const cp = state.symbolEdit.codePoint;
     if (cp) {
-        for (const fk in state.font.codePoints[cp]) {
-            if (!Array.isArray(state.font.codePoints[cp][fk])) continue;
-            for (let pi = 0; pi < state.font.codePoints[cp][fk].length; ++pi) {
-                const cs = state.font.codePoints[cp][fk][pi];
+        let segmentsArray = (skey) => {
+            if (skey !== 'auxilarySegments') return state.font.codePoints[cp][skey];
+            return state.font.auxilarySegments;
+        };
+        for (const fk in SegmentTypes) {
+            let sa = segmentsArray(fk);
+            if (!Array.isArray(sa)) continue;
+            for (let pi = 0; pi < sa.length; ++pi) {
+                const cs = sa[pi];
                 const c = cs.points;
                 for (let ci = 0; ci < c.length; ++ci) {
                     const point = c[ci];
@@ -49,13 +62,6 @@ const ElementTypes = {
     },
 };
 
-const SegmentTypes = {
-    mainSegments: "Main segments",
-    postSegments: "Postponed segments",
-    beginConnection: "Begin connection",
-    endConnection: "End connection"
-};
-
 const Store = Vuex.createStore({
     state() {
         return {
@@ -76,7 +82,8 @@ const Store = Vuex.createStore({
                     mainSegments: true,
                     postSegments: false,
                     beginConnection: false,
-                    endConnection: false
+                    endConnection: false,
+                    auxilarySegments: false
                 },
             },
             uploadErrorMessage: '',
@@ -89,26 +96,62 @@ const Store = Vuex.createStore({
                 symbolSizeX: 128,
                 symbolSizeY: 128,
                 widthType: 'fixed', // proportional
-                extraLines: [],
+                auxilarySegments: [],
                 codePoints: {
                     48: {
-                        mainSegments: [{
-                            type: 'curve', // dot, line, curve3p
-                            points: [{
-                                x: 71,
-                                y: 129
-                            }, {
-                                x: 101,
-                                y: 16
-                            }, {
-                                x: 93,
-                                y: 65
-                            }, {
-                                x: 94,
-                                y: 164
-                            }]
+                        "mainSegments": [{
+                                "type": "curve",
+                                "points": [{
+                                        "x": 87,
+                                        "y": 101
+                                    },
+                                    {
+                                        "x": 121,
+                                        "y": 55
+                                    },
+                                    {
+                                        "x": 189,
+                                        "y": 122
+                                    },
+                                    {
+                                        "x": 136,
+                                        "y": 199
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "curve",
+                                "points": [{
+                                        "x": 136,
+                                        "y": 199
+                                    },
+                                    {
+                                        "x": 100,
+                                        "y": 236
+                                    },
+                                    {
+                                        "x": 46,
+                                        "y": 162
+                                    },
+                                    {
+                                        "x": 87,
+                                        "y": 101
+                                    }
+                                ]
+                            }
+                        ],
+                        "postSegments": [{
+                            "type": "line",
+                            "points": [{
+                                    "x": 140,
+                                    "y": 100
+                                },
+                                {
+                                    "x": 85,
+                                    "y": 193
+                                }
+                            ]
                         }],
-                        postSegments: [],
                         beginConnection: [],
                         endConnection: [],
                         width: 0
@@ -146,28 +189,30 @@ const Store = Vuex.createStore({
         },
     },
     mutations: {
-        setCurrentCodepoint(state, codepoint) {
-            state.symbolEdit.codePoint = codepoint;
+        setCurrentCodepoint(state, codePoint) {
+            state.symbolEdit.codePoint = codePoint;
             state.symbolEdit.dataVersion++;
         },
-        addCodepoint(state, codepoint) {
-            state.font.codePoints[codepoint] = {
+        addCodepoint(state, codePoint) {
+            state.font.codePoints[codePoint] = {
                 mainSegments: [],
                 postSegments: [],
                 beginConnection: [],
                 endConnection: [],
-                width: 0
+                width: 0,
+                top: 0,
+                bottom: 0
             };
-            state.symbolEdit.codePoint = codepoint;
+            state.symbolEdit.codePoint = codePoint;
             state.symbolEdit.dataVersion++;
         },
-        removeCodepoint(state, codepoint) {
+        removeCodepoint(state, codePoint) {
             let cps = Object.keys(state.font.codePoints);
             cps.sort((a, b) => a - b);
-            codepoint = parseInt(codepoint);
+            codePoint = parseInt(codePoint);
             if (cps.length > 1) {
-                delete state.font.codePoints[codepoint];
-                let fi = cps.findIndex(e => parseInt(e) === codepoint);
+                delete state.font.codePoints[codePoint];
+                let fi = cps.findIndex(e => parseInt(e) === codePoint);
                 if (fi === 0) ++fi;
                 else --fi;
                 state.symbolEdit.codePoint = cps[fi];
@@ -221,13 +266,18 @@ const Store = Vuex.createStore({
             state.symbolEdit.mouse.y = xy.y;
             state.symbolEdit.mouse.curveX = xy.curveX;
             state.symbolEdit.mouse.curveY = xy.curveY;
+            const cp = state.symbolEdit.codePoint;
+            let segmentsArray = (skey) => {
+                if (skey !== 'auxilarySegments') return state.font.codePoints[cp][skey];
+                return state.font.auxilarySegments;
+            };
             if (state.symbolEdit.mouse.isCaptured && state.symbolEdit.mouse.capturedObjects.length) {
-                const cp = state.symbolEdit.codePoint;
                 const cs = state.font.codePoints[cp];
                 for (const c of state.symbolEdit.mouse.capturedObjects) {
                     if ('segment' in c) {
-                        cs[c.segment][c.index].points[c.pointIndex].x = xy.curveX;
-                        cs[c.segment][c.index].points[c.pointIndex].y = xy.curveY;
+                        let sa = segmentsArray(c.segment);
+                        sa[c.index].points[c.pointIndex].x = xy.curveX;
+                        sa[c.index].points[c.pointIndex].y = xy.curveY;
                     } else if (c.element === 'baseLine') {
                         state.font.baseLine = xy.curveY - state.font.symbolOffsetY;
                     }
@@ -255,16 +305,19 @@ const Store = Vuex.createStore({
                 if (co.length === 0) {
                     const cp = state.symbolEdit.codePoint;
                     const cs = state.font.codePoints[cp];
-                    let isIncompleteSegment = (segment) => {
-                        let sa = cs[segment];
-                        if (sa.length && sa[sa.length - 1].points.length < ElementTypes[sa[sa.length - 1].type].len) return true;
+                    let isIncompleteSegment = (segments) => {
+                        if (segments.length && segments[segments.length - 1].points.length < ElementTypes[segments[segments.length - 1].type].len) return true;
                         return false;
+                    };
+                    let segmentsArray = (skey) => {
+                        if (skey !== 'auxilarySegments') return cs[skey];
+                        return state.font.auxilarySegments;
                     };
                     let foundIncomplete = false;
                     for (const segment in SegmentTypes) {
-                        foundIncomplete = isIncompleteSegment(segment);
+                        let sa = segmentsArray(segment);
+                        foundIncomplete = isIncompleteSegment(sa);
                         if (foundIncomplete) {
-                            let sa = cs[segment];
                             sa[sa.length - 1].points.push({
                                 x: capture.curveX,
                                 y: capture.curveY
@@ -273,7 +326,7 @@ const Store = Vuex.createStore({
                         }
                     }
                     if (!foundIncomplete) {
-                        let sa = cs[state.symbolEdit.newSegmentType];
+                        let sa = segmentsArray(state.symbolEdit.newSegmentType);
                         sa.push({
                             type: state.symbolEdit.newElementType,
                             points: [{
@@ -303,11 +356,25 @@ const Store = Vuex.createStore({
             segment
         }) {
             const cp = state.symbolEdit.codePoint;
-            let cs = state.font.codePoints[cp][segment];
+            let segmentsArray = (skey) => {
+                if (skey !== 'auxilarySegments') return state.font.codePoints[cp][skey];
+                return state.font.auxilarySegments;
+            };
+            let cs = segmentsArray(segment);
             cs.splice(curveIndex, 1);
             state.symbolEdit.mouse.isCaptured = false;
             state.symbolEdit.dataVersion++;
         },
+        setSymbolMeasures(state, {
+            codePoint,
+            width,
+            top,
+            bottom
+        }) {
+            state.font.codePoints[codePoint].width = width;
+            state.font.codePoints[codePoint].top = top;
+            state.font.codePoints[codePoint].bottom = bottom;
+        }
     },
     getters: {},
 });

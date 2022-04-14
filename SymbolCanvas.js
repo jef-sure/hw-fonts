@@ -58,9 +58,6 @@ const SymbolCanvas = {
         symbolSizeY() {
             this.draw();
         },
-        symbolCurves() {
-            this.draw();
-        },
         dataVersion() {
             this.draw();
         }
@@ -68,7 +65,31 @@ const SymbolCanvas = {
     methods: {
         draw() {
             this.drawSymbolBackground();
-            SymbolCurves.drawShownSegments(this, true);
+            Draw.shownSegments(this, true);
+            if (this.symbolCurves !== this.noCurves) {
+                const segments = ['mainSegments', 'postSegments'];
+                let sm = new SymbolMeasure();
+                for (const skey of segments) {
+                    Draw.arrayOfSegments(sm, this.symbolCurves[skey], 1);
+                }
+                if (sm.left !== undefined) {
+                    let width = sm.right - sm.left + 1;
+                    let bl = this.$store.state.font.baseLine + this.symbolOffsetY;
+                    let top = sm.top - bl;
+                    let bottom = sm.bottom - bl;
+                    if (width !== parseInt(this.symbolCurves.width) ||
+                        top !== parseInt(this.symbolCurves.top) ||
+                        bottom !== parseInt(this.symbolCurves.bottom)
+                    ) {
+                        this.$store.commit('setSymbolMeasures', {
+                            codePoint: this.$store.state.symbolEdit.codePoint,
+                            width: width,
+                            top: top,
+                            bottom: bottom
+                        });
+                    }
+                }
+            }
         },
         drawSymbolBackground() {
             let svfs = this.symbolCtx.fillStyle;
@@ -123,7 +144,7 @@ const SymbolCanvas = {
             this.symbolCtx.strokeStyle = svss;
         },
         drawLine(x1, y1, x2, y2, color) {
-            SymbolCurves.drawLine(this, x1, y1, x2, y2, color);
+            Draw.line(this, x1, y1, x2, y2, color);
         },
         onmousemove(event) {
             var rect = event.target.getBoundingClientRect();
