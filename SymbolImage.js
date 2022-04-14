@@ -73,7 +73,7 @@ const SymbolImage = {
     methods: {
         draw() {
             this.drawSymbolBackground();
-            SymbolCurves.drawShownSegments(this, false);
+            Draw.shownSegments(this, false);
         },
         drawSymbolBackground() {
             let svfs = this.symbolCtx.fillStyle;
@@ -105,7 +105,7 @@ const SymbolImage = {
             this.symbolCtx.fillStyle = svfs;
         },
         drawLine(x1, y1, x2, y2, color) {
-            SymbolCurves.drawLine(this, x1, y1, x2, y2, color);
+            Draw.line(this, x1, y1, x2, y2, color);
         },
     },
     template: `

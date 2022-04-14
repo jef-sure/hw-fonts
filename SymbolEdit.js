@@ -80,11 +80,10 @@ const SymbolEdit = {
             this.$store.commit('setSymbolsBlock', this.selectedBlockIndex);
         },
         isSegmentComplete(segment) {
-            let curves = this.symbolCurves;
+            let curves = this.symbolCurves(segment);
             if (curves === this.noCurves) return true;
-            let sa = curves[segment];
-            if (!sa.length) return true;
-            let lc = sa[sa.length - 1];
+            if (!curves.length) return true;
+            let lc = curves[curves.length - 1];
             return this.ElementTypes[lc.type].len === lc.points.length;
         },
         isShownSegment(segment) {
@@ -94,6 +93,13 @@ const SymbolEdit = {
             let change = {};
             change[segment] = !this.$store.state.symbolEdit.shownSegments[segment];
             this.$store.commit('setShownSegment', change);
+        },
+        symbolCurves(segment) {
+            const cp = this.$store.state.symbolEdit.codePoint;
+            if (!cp) return this.noCurves;
+            if (segment === 'auxilarySegments')
+                return this.$store.state.font.auxilarySegments;
+            return this.$store.state.font.codePoints[cp][segment];
         },
     },
     computed: {
@@ -183,12 +189,6 @@ const SymbolEdit = {
             set(m) {
                 this.$store.commit('setUploadErrorMessage', m);
             },
-        },
-        symbolCurves() {
-            const cp = this.$store.state.symbolEdit.codePoint;
-            if (!cp) return this.noCurves;
-            const cs = this.$store.state.font.codePoints[cp];
-            return cs ? cs : this.noCurves;
         },
         fontCodePoints() {
             let cps = Object.keys(this.$store.state.font.codePoints).map(e => parseInt(e));
@@ -319,7 +319,7 @@ const SymbolEdit = {
                                 <input  type="checkbox" :checked="isShownSegment(segment)" @change="(event) => setShownSegment(event, segment)" />
                                 {{segmentName}}
                             </th></tr>
-                            <tr :class="{incomplete: !isSegmentComplete(segment) && ci === symbolCurves[segment].length-1 }" v-for="(curve, ci) in symbolCurves[segment]">
+                            <tr :class="{incomplete: !isSegmentComplete(segment) && ci === symbolCurves(segment).length-1 }" v-for="(curve, ci) in symbolCurves(segment)">
                             <td>{{ci}}:</td>
                             <th>{{ElementTypes[curve.type].name}}</th>
                             <td v-for="(point, index) in curve.points">
