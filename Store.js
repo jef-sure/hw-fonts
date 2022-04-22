@@ -369,11 +369,15 @@ const Store = Vuex.createStore({
             codePoint,
             width,
             top,
-            bottom
+            bottom,
+            left,
+            right
         }) {
             state.font.codePoints[codePoint].width = width;
             state.font.codePoints[codePoint].top = top;
             state.font.codePoints[codePoint].bottom = bottom;
+            state.font.codePoints[codePoint].left = left;
+            state.font.codePoints[codePoint].right = right;
         }
     },
     getters: {},

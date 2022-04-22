@@ -77,6 +77,8 @@ const SymbolCanvas = {
                     let bl = this.$store.state.font.baseLine + this.symbolOffsetY;
                     let top = sm.top - bl;
                     let bottom = sm.bottom - bl;
+                    let left = sm.left - this.symbolOffsetX;
+                    let right = sm.right - this.symbolOffsetX;
                     if (width !== parseInt(this.symbolCurves.width) ||
                         top !== parseInt(this.symbolCurves.top) ||
                         bottom !== parseInt(this.symbolCurves.bottom)
@@ -85,7 +87,9 @@ const SymbolCanvas = {
                             codePoint: this.$store.state.symbolEdit.codePoint,
                             width: width,
                             top: top,
-                            bottom: bottom
+                            bottom: bottom,
+                            left: left,
+                            right: right,
                         });
                     }
                 }
