@@ -1,4 +1,4 @@
-const app = Vue.createApp({
+var app = Vue.createApp({
     template: `
     <div>
         <div style="display: table">
@@ -7,7 +7,7 @@ const app = Vue.createApp({
                     <a href="#/">Font editor</a>
                 </div>
                 <div style="display: table-cell">
-                    <a href="#/effects">Effects</a>
+                    <a href="#effects">Effects</a>
                 </div>
             </div>
         </div>

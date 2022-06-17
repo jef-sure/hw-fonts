@@ -18,6 +18,6 @@ const Router = {
         });
     },
     template: `
-    <component :is="isClass"></component>
+    <component :is="isClass" :key="isClass"></component>
     `
 };
