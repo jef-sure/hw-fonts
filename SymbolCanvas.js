@@ -151,6 +151,7 @@ const SymbolCanvas = {
             Draw.line(this, x1, y1, x2, y2, color);
         },
         onmousemove(event) {
+            // if (!this.$store.state.symbolEdit.mouse.isCaptured) return;
             var rect = event.target.getBoundingClientRect();
             var x = event.clientX - rect.left;
             var y = event.clientY - rect.top;
@@ -194,8 +195,11 @@ const SymbolCanvas = {
                 curveY: cY,
             });
         },
+        onescape(event) {
+            this.$store.commit('cancelLastIncompleteCurve');
+        },
     },
     template: `
-        <canvas class="canvas-symbol" ref="symbol" @mousemove="onmousemove" @mousedown="onmousedown" @mouseup="onmouseup"></canvas>
+        <canvas class="canvas-symbol" ref="symbol" @mousemove="onmousemove" @mousedown="onmousedown" @mouseup="onmouseup" tabindex="1" @keyup.esc="onescape"></canvas>
     `
 };

@@ -1,5 +1,5 @@
 {
-    "name": "font0-I",
+    "name": "font0-P",
     "baseLine": 127,
     "symbolOffsetX": 66,
     "symbolOffsetY": 80,
@@ -50,8 +50,8 @@
             "type": "line",
             "points": [
                 {
-                    "x": 157,
-                    "y": 86
+                    "x": 158,
+                    "y": 82
                 },
                 {
                     "x": 127,
@@ -67,8 +67,8 @@
                     "y": 207
                 },
                 {
-                    "x": 104,
-                    "y": 86
+                    "x": 105,
+                    "y": 82
                 }
             ]
         }
@@ -1490,6 +1490,464 @@
             "bottom": 0,
             "left": 8,
             "right": 90
+        },
+        "74": {
+            "mainSegments": [
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 88,
+                            "y": 119
+                        },
+                        {
+                            "x": 54,
+                            "y": 39
+                        },
+                        {
+                            "x": 164,
+                            "y": 146
+                        },
+                        {
+                            "x": 157,
+                            "y": 86
+                        }
+                    ]
+                },
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 157,
+                            "y": 86
+                        },
+                        {
+                            "x": 151,
+                            "y": 238
+                        },
+                        {
+                            "x": 72,
+                            "y": 216
+                        },
+                        {
+                            "x": 80,
+                            "y": 183
+                        }
+                    ]
+                }
+            ],
+            "postSegments": [],
+            "beginConnection": [],
+            "endConnection": [],
+            "width": 79,
+            "top": -121,
+            "bottom": 0,
+            "left": 13,
+            "right": 91
+        },
+        "75": {
+            "mainSegments": [
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 94,
+                            "y": 96
+                        },
+                        {
+                            "x": 109,
+                            "y": 71
+                        },
+                        {
+                            "x": 108,
+                            "y": 86
+                        },
+                        {
+                            "x": 75,
+                            "y": 206
+                        }
+                    ]
+                },
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 75,
+                            "y": 206
+                        },
+                        {
+                            "x": 87,
+                            "y": 99
+                        },
+                        {
+                            "x": 184,
+                            "y": 73
+                        },
+                        {
+                            "x": 149,
+                            "y": 93
+                        }
+                    ]
+                },
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 149,
+                            "y": 93
+                        },
+                        {
+                            "x": 61,
+                            "y": 133
+                        },
+                        {
+                            "x": 71,
+                            "y": 247
+                        },
+                        {
+                            "x": 130,
+                            "y": 193
+                        }
+                    ]
+                }
+            ],
+            "postSegments": [],
+            "beginConnection": [],
+            "endConnection": [],
+            "width": 83,
+            "top": -121,
+            "bottom": 0,
+            "left": 9,
+            "right": 91
+        },
+        "76": {
+            "mainSegments": [
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 124,
+                            "y": 86
+                        },
+                        {
+                            "x": 98,
+                            "y": 95
+                        },
+                        {
+                            "x": 93,
+                            "y": 227
+                        },
+                        {
+                            "x": 75,
+                            "y": 204
+                        }
+                    ]
+                },
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 75,
+                            "y": 204
+                        },
+                        {
+                            "x": 71,
+                            "y": 194
+                        },
+                        {
+                            "x": 83,
+                            "y": 191
+                        },
+                        {
+                            "x": 103,
+                            "y": 200
+                        }
+                    ]
+                },
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 103,
+                            "y": 200
+                        },
+                        {
+                            "x": 127,
+                            "y": 210
+                        },
+                        {
+                            "x": 152,
+                            "y": 209
+                        },
+                        {
+                            "x": 157,
+                            "y": 197
+                        }
+                    ]
+                }
+            ],
+            "postSegments": [],
+            "beginConnection": [],
+            "endConnection": [],
+            "width": 84,
+            "top": -121,
+            "bottom": 0,
+            "left": 8,
+            "right": 91
+        },
+        "77": {
+            "mainSegments": [
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 74,
+                            "y": 187
+                        },
+                        {
+                            "x": 77,
+                            "y": 222
+                        },
+                        {
+                            "x": 88,
+                            "y": 222
+                        },
+                        {
+                            "x": 115,
+                            "y": 86
+                        }
+                    ]
+                },
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 115,
+                            "y": 86
+                        },
+                        {
+                            "x": 85,
+                            "y": 238
+                        },
+                        {
+                            "x": 120,
+                            "y": 238
+                        },
+                        {
+                            "x": 157,
+                            "y": 87
+                        }
+                    ]
+                },
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 157,
+                            "y": 87
+                        },
+                        {
+                            "x": 124,
+                            "y": 222
+                        },
+                        {
+                            "x": 148,
+                            "y": 222
+                        },
+                        {
+                            "x": 157,
+                            "y": 187
+                        }
+                    ]
+                }
+            ],
+            "postSegments": [],
+            "beginConnection": [],
+            "endConnection": [],
+            "width": 84,
+            "top": -121,
+            "bottom": 0,
+            "left": 8,
+            "right": 91
+        },
+        "78": {
+            "mainSegments": [
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 74,
+                            "y": 186
+                        },
+                        {
+                            "x": 73,
+                            "y": 221
+                        },
+                        {
+                            "x": 84,
+                            "y": 225
+                        },
+                        {
+                            "x": 107,
+                            "y": 86
+                        }
+                    ]
+                },
+                {
+                    "type": "curve3p",
+                    "points": [
+                        {
+                            "x": 107,
+                            "y": 86
+                        },
+                        {
+                            "x": 89,
+                            "y": 206
+                        },
+                        {
+                            "x": 111,
+                            "y": 207
+                        }
+                    ]
+                },
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 111,
+                            "y": 207
+                        },
+                        {
+                            "x": 129,
+                            "y": 208
+                        },
+                        {
+                            "x": 139,
+                            "y": 85
+                        },
+                        {
+                            "x": 157,
+                            "y": 86
+                        }
+                    ]
+                }
+            ],
+            "postSegments": [],
+            "beginConnection": [],
+            "endConnection": [],
+            "width": 84,
+            "top": -121,
+            "bottom": 0,
+            "left": 8,
+            "right": 91
+        },
+        "79": {
+            "mainSegments": [
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 129,
+                            "y": 86
+                        },
+                        {
+                            "x": 87,
+                            "y": 80
+                        },
+                        {
+                            "x": 56,
+                            "y": 206
+                        },
+                        {
+                            "x": 102,
+                            "y": 207
+                        }
+                    ]
+                },
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 102,
+                            "y": 207
+                        },
+                        {
+                            "x": 146,
+                            "y": 210
+                        },
+                        {
+                            "x": 175,
+                            "y": 90
+                        },
+                        {
+                            "x": 130,
+                            "y": 86
+                        }
+                    ]
+                }
+            ],
+            "postSegments": [],
+            "beginConnection": [],
+            "endConnection": [],
+            "width": 75,
+            "top": -121,
+            "bottom": 0,
+            "left": 13,
+            "right": 87
+        },
+        "80": {
+            "mainSegments": [
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 120,
+                            "y": 82
+                        },
+                        {
+                            "x": 98,
+                            "y": 88
+                        },
+                        {
+                            "x": 87,
+                            "y": 215
+                        },
+                        {
+                            "x": 75,
+                            "y": 206
+                        }
+                    ]
+                },
+                {
+                    "type": "curve",
+                    "points": [
+                        {
+                            "x": 89,
+                            "y": 96
+                        },
+                        {
+                            "x": 189,
+                            "y": 67
+                        },
+                        {
+                            "x": 150,
+                            "y": 175
+                        },
+                        {
+                            "x": 81,
+                            "y": 160
+                        }
+                    ]
+                }
+            ],
+            "postSegments": [],
+            "beginConnection": [],
+            "endConnection": [],
+            "width": 76,
+            "top": -125,
+            "bottom": -1,
+            "left": 9,
+            "right": 84
         }
     }
 }

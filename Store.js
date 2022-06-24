@@ -15,6 +15,7 @@ function getMouseCaptured(state, x, y) {
             return state.font.auxilarySegments;
         };
         for (const fk in SegmentTypes) {
+            if (!state.symbolEdit.shownSegments[fk]) continue;
             let sa = segmentsArray(fk);
             if (!Array.isArray(sa)) continue;
             for (let pi = 0; pi < sa.length; ++pi) {
@@ -61,6 +62,28 @@ const ElementTypes = {
         name: "Curve"
     },
 };
+
+function findSegmentWithIncompleteCurve(state) {
+    const cp = state.symbolEdit.codePoint;
+    const cs = state.font.codePoints[cp];
+    let isIncompleteSegment = (segments) => {
+        if (segments.length && segments[segments.length - 1].points.length < ElementTypes[segments[segments.length - 1].type].len) return true;
+        return false;
+    };
+    let segmentsArray = (skey) => {
+        if (skey !== 'auxilarySegments') return cs[skey];
+        return state.font.auxilarySegments;
+    };
+    for (const segment in SegmentTypes) {
+        let sa = segmentsArray(segment);
+        if (isIncompleteSegment(sa)) {
+            return sa;
+        }
+    }
+    return null;
+}
+
+
 
 const Store = Vuex.createStore({
     state() {
@@ -303,30 +326,16 @@ const Store = Vuex.createStore({
                                         }, ...]
                 */
                 if (co.length === 0) {
-                    const cp = state.symbolEdit.codePoint;
-                    const cs = state.font.codePoints[cp];
-                    let isIncompleteSegment = (segments) => {
-                        if (segments.length && segments[segments.length - 1].points.length < ElementTypes[segments[segments.length - 1].type].len) return true;
-                        return false;
-                    };
-                    let segmentsArray = (skey) => {
-                        if (skey !== 'auxilarySegments') return cs[skey];
-                        return state.font.auxilarySegments;
-                    };
-                    let foundIncomplete = false;
-                    for (const segment in SegmentTypes) {
-                        let sa = segmentsArray(segment);
-                        foundIncomplete = isIncompleteSegment(sa);
-                        if (foundIncomplete) {
-                            sa[sa.length - 1].points.push({
-                                x: capture.curveX,
-                                y: capture.curveY
-                            });
-                            break;
-                        }
-                    }
-                    if (!foundIncomplete) {
-                        let sa = segmentsArray(state.symbolEdit.newSegmentType);
+                    let sa = findSegmentWithIncompleteCurve(state);
+                    if (sa) {
+                        sa[sa.length - 1].points.push({
+                            x: capture.curveX,
+                            y: capture.curveY
+                        });
+                    } else {
+                        const cp = state.symbolEdit.codePoint;
+                        const cs = state.font.codePoints[cp];
+                        let sa = state.symbolEdit.newSegmentType !== 'auxilarySegments' ? cs[state.symbolEdit.newSegmentType] : state.font.auxilarySegments;
                         sa.push({
                             type: state.symbolEdit.newElementType,
                             points: [{
@@ -343,6 +352,14 @@ const Store = Vuex.createStore({
             }
             state.symbolEdit.mouse.isCaptured = capture.isCaptured;
             state.symbolEdit.dataVersion++;
+        },
+        cancelLastIncompleteCurve(state) {
+            let sa = findSegmentWithIncompleteCurve(state);
+            if (sa) {
+                sa.pop();
+                state.symbolEdit.mouse.isCaptured = false;
+                state.symbolEdit.dataVersion++;
+            }
         },
         setBaseLine(state, y) {
             state.font.baseLine = y;
