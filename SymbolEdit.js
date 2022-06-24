@@ -369,6 +369,7 @@ const SymbolEdit = {
             </div>
             <div style="display: table">
                 <div style="display: table-row">
+                <div style="display: flex; flex-wrap: wrap;">
                     <div @click="selectCurrentSymbol(cp)" style="display: table-cell; padding: 2px; width: fit-content" v-for="cp in fontCodePoints">
                         <div style="display: table-row">U+{{Number(cp).toString(16).padStart(4,0)}}: '{{String.fromCodePoint(cp)}}'</div>
                         <div style="display: table-row">
@@ -377,6 +378,7 @@ const SymbolEdit = {
                             </div>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
