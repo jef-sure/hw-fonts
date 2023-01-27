@@ -45,6 +45,9 @@ class Draw {
             let err = 0;
             ++dx;
             ++dy;
+            err = dy;
+            dx *= 2;
+            dy *= 2;
             while (true) {
                 object.drawPointCanvas(x1, y1, color);
                 if (x1 === x2) break;
@@ -66,6 +69,9 @@ class Draw {
             let err = 0;
             ++dx;
             ++dy;
+            err = dx;
+            dx *= 2;
+            dy *= 2;
             while (true) {
                 object.drawPointCanvas(x1, y1, color);
                 if (y1 === y2) break;
