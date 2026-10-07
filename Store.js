@@ -85,7 +85,7 @@ function findSegmentWithIncompleteCurve(state) {
 
 
 
-const Store = Vuex.createStore({
+const useFontStore = Pinia.defineStore('font', {
     state() {
         return {
             symbolEdit: {
@@ -114,6 +114,7 @@ const Store = Vuex.createStore({
             font: {
                 name: 'font',
                 baseLine: 100,
+                xHeight: 58, // height of lowercase letters above the base line
                 symbolOffsetX: 64,
                 symbolOffsetY: 64,
                 symbolSizeX: 128,
@@ -185,39 +186,63 @@ const Store = Vuex.createStore({
                 begin: 0,
                 blockWidth: 16,
                 blockLength: 16
+            },
+            symbolView: {
+                codePoint: null,
+                scale: 1,
+                penPath: false,
+                filter: '',
+                shownSegments: {
+                    mainSegments: true,
+                    postSegments: true,
+                    beginConnection: false,
+                    endConnection: false,
+                    auxilarySegments: false
+                },
+            },
+            effects: {
+                text: '',
+                scale: 1,
+                thickness: 1,
+                color: '#000000',
+                joined: true,
+                jointSpace: 16,
+                proportional: false,
+                speed: 20,
             }
         };
     },
     actions: {
-        uploadFont({
-            commit,
-            state
-        }, text) {
+        uploadFont(text) {
             try {
                 let myResponse = JSON.parse(text);
                 let font = {};
                 let absent = [];
-                for (let fk in state.font) {
+                // keys added to the format later, fonts saved before have no such keys
+                const defaults = {
+                    xHeight: 58
+                };
+                for (let fk in this.font) {
                     if (fk in myResponse)
                         font[fk] = myResponse[fk];
+                    else if (fk in defaults)
+                        font[fk] = defaults[fk];
                     else
                         absent.push(fk);
                 }
                 if (absent.length) {
-                    commit('setUploadErrorMessage', 'Bad font format. Absent keys: ' + absent.join(", "));
+                    this.setUploadErrorMessage('Bad font format. Absent keys: ' + absent.join(", "));
                 } else {
-                    commit('setFont', font);
+                    this.setFont(font);
                 }
             } catch (e) {}
         },
-    },
-    mutations: {
-        setCurrentCodepoint(state, codePoint) {
-            state.symbolEdit.codePoint = codePoint;
-            state.symbolEdit.dataVersion++;
+        setCurrentCodepoint(codePoint) {
+            this.symbolEdit.codePoint = codePoint;
+            this.symbolEdit.dataVersion++;
         },
-        addCodepoint(state, codePoint) {
-            state.font.codePoints[codePoint] = {
+        addCodepoint(codePoint) {
+            this.font.codePoints[codePoint] = {
                 mainSegments: [],
                 postSegments: [],
                 beginConnection: [],
@@ -226,97 +251,97 @@ const Store = Vuex.createStore({
                 top: 0,
                 bottom: 0
             };
-            state.symbolEdit.codePoint = codePoint;
-            state.symbolEdit.dataVersion++;
+            this.symbolEdit.codePoint = codePoint;
+            this.symbolEdit.dataVersion++;
         },
-        removeCodepoint(state, codePoint) {
-            let cps = Object.keys(state.font.codePoints);
+        removeCodepoint(codePoint) {
+            let cps = Object.keys(this.font.codePoints);
             cps.sort((a, b) => a - b);
             codePoint = parseInt(codePoint);
             if (cps.length > 1) {
-                delete state.font.codePoints[codePoint];
+                delete this.font.codePoints[codePoint];
                 let fi = cps.findIndex(e => parseInt(e) === codePoint);
                 if (fi === 0) ++fi;
                 else --fi;
-                state.symbolEdit.codePoint = cps[fi];
-                state.symbolEdit.dataVersion++;
+                this.symbolEdit.codePoint = cps[fi];
+                this.symbolEdit.dataVersion++;
             }
         },
-        setShownSegment(state, segments) {
+        setShownSegment(segments) {
             for (const segment in segments) {
-                if (segment in state.symbolEdit.shownSegments)
-                    state.symbolEdit.shownSegments[segment] = segments[segment] ? true : false;
+                if (segment in this.symbolEdit.shownSegments)
+                    this.symbolEdit.shownSegments[segment] = segments[segment] ? true : false;
             }
-            state.symbolEdit.dataVersion++;
+            this.symbolEdit.dataVersion++;
         },
-        setSymbolsBlock(state, uindex) {
+        setSymbolsBlock(uindex) {
             let begin = parseInt(UnicodeRanges[uindex]['data-begin'], 16);
             let end = parseInt(UnicodeRanges[uindex]['data-end'], 16);
-            state.symbolsBlock.begin = begin;
-            state.symbolsBlock.blockLength = parseInt((end + 16 - begin) / 16);
+            this.symbolsBlock.begin = begin;
+            this.symbolsBlock.blockLength = parseInt((end + 16 - begin) / 16);
         },
-        setNewElementType(state, type) {
-            state.symbolEdit.newElementType = type;
+        setNewElementType(type) {
+            this.symbolEdit.newElementType = type;
         },
-        setNewSegmentType(state, type) {
-            state.symbolEdit.newSegmentType = type;
+        setNewSegmentType(type) {
+            this.symbolEdit.newSegmentType = type;
         },
-        setFontName(state, name) {
-            state.font.name = name;
+        setFontName(name) {
+            this.font.name = name;
         },
-        setUploadErrorMessage(state, message) {
-            state.uploadErrorMessage = message;
+        setUploadErrorMessage(message) {
+            this.uploadErrorMessage = message;
         },
-        setFont(state, font) {
-            if (!(state.symbolEdit.codePoint in font.codePoints)) {
+        setFont(font) {
+            if (!(this.symbolEdit.codePoint in font.codePoints)) {
                 let cs = Object.keys(font.codePoints);
-                state.symbolEdit.codePoint = cs.length ? cs[0] : 48;
+                this.symbolEdit.codePoint = cs.length ? cs[0] : 48;
             }
-            state.font = font;
-            state.fontSequence++;
-            state.symbolEdit.dataVersion++;
+            this.font = font;
+            this.fontSequence++;
+            this.symbolEdit.dataVersion++;
         },
-        setSymbolOffset(state, offsetXY) {
-            state.font.symbolOffsetX = offsetXY.x;
-            state.font.symbolOffsetY = offsetXY.y;
+        setSymbolOffset(offsetXY) {
+            this.font.symbolOffsetX = offsetXY.x;
+            this.font.symbolOffsetY = offsetXY.y;
         },
-        setSymbolSize(state, sizeXY) {
-            state.font.symbolSizeX = sizeXY.x;
-            state.font.symbolSizeY = sizeXY.y;
+        setSymbolSize(sizeXY) {
+            this.font.symbolSizeX = sizeXY.x;
+            this.font.symbolSizeY = sizeXY.y;
         },
-        setSymbolMouseXY(state, xy) {
-            state.symbolEdit.mouse.x = xy.x;
-            state.symbolEdit.mouse.y = xy.y;
-            state.symbolEdit.mouse.curveX = xy.curveX;
-            state.symbolEdit.mouse.curveY = xy.curveY;
-            const cp = state.symbolEdit.codePoint;
+        setSymbolMouseXY(xy) {
+            this.symbolEdit.mouse.x = xy.x;
+            this.symbolEdit.mouse.y = xy.y;
+            this.symbolEdit.mouse.curveX = xy.curveX;
+            this.symbolEdit.mouse.curveY = xy.curveY;
+            const cp = this.symbolEdit.codePoint;
             let segmentsArray = (skey) => {
-                if (skey !== 'auxilarySegments') return state.font.codePoints[cp][skey];
-                return state.font.auxilarySegments;
+                if (skey !== 'auxilarySegments') return this.font.codePoints[cp][skey];
+                return this.font.auxilarySegments;
             };
-            if (state.symbolEdit.mouse.isCaptured && state.symbolEdit.mouse.capturedObjects.length) {
-                const cs = state.font.codePoints[cp];
-                for (const c of state.symbolEdit.mouse.capturedObjects) {
+            if (this.symbolEdit.mouse.isCaptured && this.symbolEdit.mouse.capturedObjects.length) {
+                const cs = this.font.codePoints[cp];
+                for (const c of this.symbolEdit.mouse.capturedObjects) {
                     if ('segment' in c) {
                         let sa = segmentsArray(c.segment);
                         sa[c.index].points[c.pointIndex].x = xy.curveX;
                         sa[c.index].points[c.pointIndex].y = xy.curveY;
                     } else if (c.element === 'baseLine') {
-                        state.font.baseLine = xy.curveY - state.font.symbolOffsetY;
+                        this.font.baseLine = xy.curveY - this.font.symbolOffsetY;
                     }
                 }
-                state.symbolEdit.dataVersion++;
+                this.symbolEdit.dataVersion++;
             }
         },
-        setSymbolMouseCaptured(state, capture) {
-            state.symbolEdit.mouse.x = capture.x;
-            state.symbolEdit.mouse.y = capture.y;
-            state.symbolEdit.mouse.curveX = capture.curveX;
-            state.symbolEdit.mouse.curveY = capture.curveY;
-            if (!capture.isCaptured && state.symbolEdit.mouse.capturedObjects.length) {
-                state.symbolEdit.mouse.capturedObjects = [];
-            } else if (capture.isCaptured && !state.symbolEdit.mouse.isCaptured) {
-                let co = getMouseCaptured(state, capture.curveX, capture.curveY);
+        setSymbolMouseCaptured(capture) {
+            this.symbolEdit.mouse.x = capture.x;
+            this.symbolEdit.mouse.y = capture.y;
+            this.symbolEdit.mouse.curveX = capture.curveX;
+            this.symbolEdit.mouse.curveY = capture.curveY;
+            if (!capture.isCaptured && this.symbolEdit.mouse.capturedObjects.length) {
+                this.symbolEdit.mouse.capturedObjects = [];
+            } else if (capture.isCaptured && !this.symbolEdit.mouse.isCaptured) {
+                let co = getMouseCaptured(this, capture.curveX, capture.curveY);
                 /*
                                         [{
                                             element: type, // curve, dot, line, curve3p, baseLine
@@ -326,76 +351,122 @@ const Store = Vuex.createStore({
                                         }, ...]
                 */
                 if (co.length === 0) {
-                    let sa = findSegmentWithIncompleteCurve(state);
+                    let sa = findSegmentWithIncompleteCurve(this);
                     if (sa) {
                         sa[sa.length - 1].points.push({
                             x: capture.curveX,
                             y: capture.curveY
                         });
                     } else {
-                        const cp = state.symbolEdit.codePoint;
-                        const cs = state.font.codePoints[cp];
-                        let sa = state.symbolEdit.newSegmentType !== 'auxilarySegments' ? cs[state.symbolEdit.newSegmentType] : state.font.auxilarySegments;
+                        const cp = this.symbolEdit.codePoint;
+                        const cs = this.font.codePoints[cp];
+                        let sa = this.symbolEdit.newSegmentType !== 'auxilarySegments' ? cs[this.symbolEdit.newSegmentType] : this.font.auxilarySegments;
                         sa.push({
-                            type: state.symbolEdit.newElementType,
+                            type: this.symbolEdit.newElementType,
                             points: [{
                                 x: capture.curveX,
                                 y: capture.curveY
                             }]
                         });
-                        if (!state.symbolEdit.shownSegments[state.symbolEdit.newSegmentType])
-                            state.symbolEdit.shownSegments[state.symbolEdit.newSegmentType] = true;
+                        if (!this.symbolEdit.shownSegments[this.symbolEdit.newSegmentType])
+                            this.symbolEdit.shownSegments[this.symbolEdit.newSegmentType] = true;
                     }
-                    co = getMouseCaptured(state, capture.curveX, capture.curveY);
+                    co = getMouseCaptured(this, capture.curveX, capture.curveY);
                 }
-                state.symbolEdit.mouse.capturedObjects = co;
+                this.symbolEdit.mouse.capturedObjects = co;
             }
-            state.symbolEdit.mouse.isCaptured = capture.isCaptured;
-            state.symbolEdit.dataVersion++;
+            this.symbolEdit.mouse.isCaptured = capture.isCaptured;
+            this.symbolEdit.dataVersion++;
         },
-        cancelLastIncompleteCurve(state) {
-            let sa = findSegmentWithIncompleteCurve(state);
+        cancelLastIncompleteCurve() {
+            let sa = findSegmentWithIncompleteCurve(this);
             if (sa) {
                 sa.pop();
-                state.symbolEdit.mouse.isCaptured = false;
-                state.symbolEdit.dataVersion++;
+                this.symbolEdit.mouse.isCaptured = false;
+                this.symbolEdit.dataVersion++;
             }
         },
-        setBaseLine(state, y) {
-            state.font.baseLine = y;
-            state.symbolEdit.dataVersion++;
+        setXHeight(height) {
+            this.font.xHeight = height;
         },
-        incrementDataVersion(state) {
-            state.symbolEdit.dataVersion++;
+        setBaseLine(y) {
+            this.font.baseLine = y;
+            this.symbolEdit.dataVersion++;
         },
-        deleteCurve(state, {
+        incrementDataVersion() {
+            this.symbolEdit.dataVersion++;
+        },
+        deleteCurve({
             curveIndex,
             segment
         }) {
-            const cp = state.symbolEdit.codePoint;
+            const cp = this.symbolEdit.codePoint;
             let segmentsArray = (skey) => {
-                if (skey !== 'auxilarySegments') return state.font.codePoints[cp][skey];
-                return state.font.auxilarySegments;
+                if (skey !== 'auxilarySegments') return this.font.codePoints[cp][skey];
+                return this.font.auxilarySegments;
             };
             let cs = segmentsArray(segment);
             cs.splice(curveIndex, 1);
-            state.symbolEdit.mouse.isCaptured = false;
-            state.symbolEdit.dataVersion++;
+            this.symbolEdit.mouse.isCaptured = false;
+            this.symbolEdit.dataVersion++;
         },
-        setSymbolMeasures(state, {
+        setViewCodepoint(codePoint) {
+            this.symbolView.codePoint = codePoint;
+        },
+        setViewShownSegment(segment, shown) {
+            this.symbolView.shownSegments[segment] = shown ? true : false;
+        },
+        // measures of all symbols, the editor itself renews them only for the symbol being edited
+        setAllSymbolMeasures() {
+            for (const cp in this.font.codePoints) {
+                const m = SymbolMeasure.ofSymbol(this.font, cp, ['mainSegments', 'postSegments']);
+                if (!m) continue;
+                for (const key of ['width', 'top', 'bottom', 'left', 'right', 'lineLeft', 'lineRight', 'lineWidth']) {
+                    this.font.codePoints[cp][key] = m[key];
+                }
+            }
+        },
+        // lengths of all elements are kept in the font for drawing it by other programs
+        setElementLengths() {
+            let segments = [this.font.auxilarySegments];
+            for (const cp in this.font.codePoints) {
+                for (const skey in SegmentTypes) {
+                    if (skey !== 'auxilarySegments') segments.push(this.font.codePoints[cp][skey]);
+                }
+            }
+            for (const sa of segments) {
+                if (!Array.isArray(sa)) continue;
+                for (const c of sa) c.length = Curves.elementLength(c);
+            }
+        },
+        setSymbolMeasures({
             codePoint,
             width,
             top,
             bottom,
             left,
-            right
+            right,
+            lineLeft,
+            lineRight,
+            lineWidth
         }) {
-            state.font.codePoints[codePoint].width = width;
-            state.font.codePoints[codePoint].top = top;
-            state.font.codePoints[codePoint].bottom = bottom;
-            state.font.codePoints[codePoint].left = left;
-            state.font.codePoints[codePoint].right = right;
+            this.font.codePoints[codePoint].width = width;
+            this.font.codePoints[codePoint].top = top;
+            this.font.codePoints[codePoint].bottom = bottom;
+            this.font.codePoints[codePoint].left = left;
+            this.font.codePoints[codePoint].right = right;
+            this.font.codePoints[codePoint].lineLeft = lineLeft;
+            this.font.codePoints[codePoint].lineRight = lineRight;
+            this.font.codePoints[codePoint].lineWidth = lineWidth;
         }
     },
-    getters: {},
+    getters: {
+        // sorted by code, but the Russian letters go alphabetically: Ё after Е
+        fontCodePoints(state) {
+            const order = (cp) => cp === 0x401 ? 0x415 + 0.5 : (cp === 0x451 ? 0x435 + 0.5 : cp);
+            let cps = Object.keys(state.font.codePoints).map(e => parseInt(e));
+            cps.sort((a, b) => order(a) - order(b));
+            return cps;
+        },
+    },
 });

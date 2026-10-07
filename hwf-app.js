@@ -1,4 +1,4 @@
-var app = Vue.createApp({
+var app = VueDemi.createApp({
     template: `
     <div>
         <div style="display: table">
@@ -6,7 +6,10 @@ var app = Vue.createApp({
                 <div style="display: table-cell">
                     <a href="#/">Font editor</a>
                 </div>
-                <div style="display: table-cell">
+                <div style="display: table-cell; padding-left: 1em;">
+                    <a href="#symbols">Symbols</a>
+                </div>
+                <div style="display: table-cell; padding-left: 1em;">
                     <a href="#effects">Effects</a>
                 </div>
             </div>
@@ -18,6 +21,8 @@ var app = Vue.createApp({
 app.component('SymbolEdit', SymbolEdit);
 app.component('SymbolCanvas', SymbolCanvas);
 app.component('SymbolImage', SymbolImage);
+app.component('SymbolView', SymbolView);
+app.component('Effects', Effects);
 app.component('Router', Router);
-app.use(Store);
+app.use(Pinia.createPinia());
 app.mount('#vue-app');

@@ -20,29 +20,33 @@ const SymbolCanvas = {
         this.draw();
     },
     computed: {
+        ...Pinia.mapStores(useFontStore),
         symbolOffsetX() {
-            return this.$store.state.font.symbolOffsetX;
+            return this.fontStore.font.symbolOffsetX;
         },
         symbolOffsetY() {
-            return this.$store.state.font.symbolOffsetY;
+            return this.fontStore.font.symbolOffsetY;
         },
         symbolSizeX() {
-            return this.$store.state.font.symbolSizeX;
+            return this.fontStore.font.symbolSizeX;
         },
         symbolSizeY() {
-            return this.$store.state.font.symbolSizeY;
+            return this.fontStore.font.symbolSizeY;
         },
         symbolCurves() {
-            const cp = this.$store.state.symbolEdit.codePoint;
+            const cp = this.fontStore.symbolEdit.codePoint;
             if (!cp) return this.noCurves;
-            const cs = this.$store.state.font.codePoints[cp];
+            const cs = this.fontStore.font.codePoints[cp];
             return cs ? cs : this.noCurves;
         },
         font() {
-            return this.$store.state.font;
+            return this.fontStore.font;
         },
         dataVersion() {
-            return this.$store.state.symbolEdit.dataVersion;
+            return this.fontStore.symbolEdit.dataVersion;
+        },
+        shownSegments() {
+            return this.fontStore.symbolEdit.shownSegments;
         },
     },
     watch: {
@@ -68,30 +72,11 @@ const SymbolCanvas = {
             Draw.shownSegments(this, true);
             if (this.symbolCurves !== this.noCurves) {
                 const segments = ['mainSegments', 'postSegments'];
-                let sm = new SymbolMeasure();
-                for (const skey of segments) {
-                    Draw.arrayOfSegments(sm, this.symbolCurves[skey], 1);
-                }
-                if (sm.left !== undefined) {
-                    let width = sm.right - sm.left + 1;
-                    let bl = this.$store.state.font.baseLine + this.symbolOffsetY;
-                    let top = sm.top - bl;
-                    let bottom = sm.bottom - bl;
-                    let left = sm.left - this.symbolOffsetX;
-                    let right = sm.right - this.symbolOffsetX;
-                    if (width !== parseInt(this.symbolCurves.width) ||
-                        top !== parseInt(this.symbolCurves.top) ||
-                        bottom !== parseInt(this.symbolCurves.bottom)
-                    ) {
-                        this.$store.commit('setSymbolMeasures', {
-                            codePoint: this.$store.state.symbolEdit.codePoint,
-                            width: width,
-                            top: top,
-                            bottom: bottom,
-                            left: left,
-                            right: right,
-                        });
-                    }
+                const m = SymbolMeasure.ofSymbol(this.fontStore.font, this.fontStore.symbolEdit.codePoint, segments);
+                if (m && ['width', 'top', 'bottom', 'left', 'right', 'lineLeft', 'lineRight', 'lineWidth'].some(key => m[key] !== parseInt(this.symbolCurves[key]))) {
+                    this.fontStore.setSymbolMeasures(Object.assign({
+                        codePoint: this.fontStore.symbolEdit.codePoint
+                    }, m));
                 }
             }
         },
@@ -151,12 +136,12 @@ const SymbolCanvas = {
             Draw.line(this, x1, y1, x2, y2, color);
         },
         onmousemove(event) {
-            // if (!this.$store.state.symbolEdit.mouse.isCaptured) return;
+            // if (!this.fontStore.symbolEdit.mouse.isCaptured) return;
             var rect = event.target.getBoundingClientRect();
             var x = event.clientX - rect.left;
             var y = event.clientY - rect.top;
             let [cX, cY] = this.point2Canvas(x, y);
-            this.$store.commit('setSymbolMouseXY', {
+            this.fontStore.setSymbolMouseXY({
                 x: x,
                 y: y,
                 curveX: cX,
@@ -168,14 +153,14 @@ const SymbolCanvas = {
             var x = event.clientX - rect.left;
             var y = event.clientY - rect.top;
             let [cX, cY] = this.point2Canvas(x, y);
-            this.$store.commit('setSymbolMouseCaptured', {
+            this.fontStore.setSymbolMouseCaptured({
                 isCaptured: true,
                 x: x,
                 y: y,
                 curveX: cX,
                 curveY: cY,
             });
-            this.$store.commit('setSymbolMouseXY', {
+            this.fontStore.setSymbolMouseXY({
                 x: x,
                 y: y,
                 curveX: cX,
@@ -187,7 +172,7 @@ const SymbolCanvas = {
             var x = event.clientX - rect.left;
             var y = event.clientY - rect.top;
             let [cX, cY] = this.point2Canvas(x, y);
-            this.$store.commit('setSymbolMouseCaptured', {
+            this.fontStore.setSymbolMouseCaptured({
                 isCaptured: false,
                 x: x,
                 y: y,
@@ -196,7 +181,7 @@ const SymbolCanvas = {
             });
         },
         onescape(event) {
-            this.$store.commit('cancelLastIncompleteCurve');
+            this.fontStore.cancelLastIncompleteCurve();
         },
     },
     template: `

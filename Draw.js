@@ -107,14 +107,13 @@ class Draw {
         let cs = object.symbolCellSize / 2;
         let segmentsArray = (skey) => {
             if (skey !== 'auxilarySegments') return curves[skey];
-            return object.$store.state.font.auxilarySegments;
+            return object.font.auxilarySegments;
         };
         for (const segment in SegmentTypes) {
-            if (object.$store.state.symbolEdit.shownSegments[segment]) {
+            if (object.shownSegments[segment]) {
                 let sa = segmentsArray(segment);
                 let color = 1;
                 if (segment === 'auxilarySegments') {
-                    if (!with_aux_lines) continue;
                     color = 'orange';
                 }
                 Draw.arrayOfSegments(object, sa, color);

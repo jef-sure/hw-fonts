@@ -8,6 +8,7 @@ const Router = {
         isClass() {
             if (this.currentPath) {
                 if (this.currentPath === 'effects') return "Effects";
+                if (this.currentPath === 'symbols') return "SymbolView";
             }
             return "SymbolEdit";
         }

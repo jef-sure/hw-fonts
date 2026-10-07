@@ -55,3 +55,82 @@
     width: 2em;
     height: 2em;
 }
+
+/* Symbols viewer */
+.symbol-view {
+    padding: 5px;
+}
+
+.view-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em 1em;
+    margin-bottom: 0.5em;
+}
+
+.view-toolbar label {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+}
+
+.view-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 1em;
+}
+
+.view-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.view-details {
+    position: sticky;
+    top: 5px;
+    padding: 8px;
+    flex: none;
+    width: 22em;
+}
+
+.view-group {
+    margin: 0.8em 0 0.2em 0;
+}
+
+.view-cell {
+    margin: 2px;
+    padding: 2px;
+    width: fit-content;
+    cursor: pointer;
+    border: 2px solid #0dcaf0;
+}
+
+.view-cell.view-current {
+    border-color: #ff30ff;
+}
+
+.view-cell canvas {
+    display: block;
+}
+
+.view-empty {
+    color: darkorange;
+}
+
+.effects-text {
+    margin: 5px 0;
+    padding: 4px;
+    width: fit-content;
+    max-width: 100%;
+    overflow: auto;
+    border: 1px solid black;
+}
+
+.effects-text canvas {
+    display: block;
+}
+
+.effects-missing {
+    color: #dc3545;
+}

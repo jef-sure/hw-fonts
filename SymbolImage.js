@@ -4,6 +4,16 @@ const SymbolImage = {
         scale: {
             type: Number,
             default: 1
+        },
+        // which segments to draw; editor's choice without auxilary lines is used when not given
+        segments: {
+            type: Object,
+            default: null
+        },
+        // show how the symbol is written: order and direction of its elements
+        penPath: {
+            type: Boolean,
+            default: false
         }
     },
     data() {
@@ -21,31 +31,37 @@ const SymbolImage = {
         this.draw();
     },
     computed: {
+        ...Pinia.mapStores(useFontStore),
         symbolOffsetX() {
-            return this.$store.state.font.symbolOffsetX;
+            return this.fontStore.font.symbolOffsetX;
         },
         symbolOffsetY() {
-            return this.$store.state.font.symbolOffsetY;
+            return this.fontStore.font.symbolOffsetY;
         },
         symbolSizeX() {
-            if (this.$store.state.font.widthType === 'fixed') {
-                return Math.round(this.$store.state.font.symbolSizeX * this.scale);
+            if (this.fontStore.font.widthType === 'fixed') {
+                return Math.round(this.fontStore.font.symbolSizeX * this.scale);
             } else {
-                return Math.round(this.$store.state.font.codePoints[this.codePoint].width * this.scale);
+                return Math.round(this.fontStore.font.codePoints[this.codePoint].width * this.scale);
             }
         },
         symbolSizeY() {
-            return Math.round(this.$store.state.font.symbolSizeY * this.scale);
+            return Math.round(this.fontStore.font.symbolSizeY * this.scale);
         },
         symbolCurves() {
-            const cs = this.$store.state.font.codePoints[this.codePoint];
+            const cs = this.fontStore.font.codePoints[this.codePoint];
             return cs ? cs : this.noCurves;
         },
         font() {
-            return this.$store.state.font;
+            return this.fontStore.font;
         },
         dataVersion() {
-            return this.$store.state.symbolEdit.dataVersion;
+            return this.fontStore.symbolEdit.dataVersion;
+        },
+        shownSegments() {
+            return this.segments || Object.assign({}, this.fontStore.symbolEdit.shownSegments, {
+                auxilarySegments: false
+            });
         },
     },
     watch: {
@@ -66,6 +82,15 @@ const SymbolImage = {
         symbolCurves() {
             this.draw();
         },
+        shownSegments: {
+            handler() {
+                this.draw();
+            },
+            deep: true
+        },
+        penPath() {
+            this.draw();
+        },
         dataVersion() {
             this.draw();
         }
@@ -74,6 +99,63 @@ const SymbolImage = {
         draw() {
             this.drawSymbolBackground();
             Draw.shownSegments(this, false);
+            if (this.penPath) this.drawPenPath();
+        },
+        // numbers the elements in the order of writing: a dot is where an element begins, an arrow is where it ends,
+        // a red dot means the pen is taken off the paper before the element
+        drawPenPath() {
+            if (this.symbolCurves === this.noCurves) return;
+            const ctx = this.symbolCtx;
+            const lo = this.scale / 2;
+            const toCanvas = (p) => {
+                let [px, py] = this.canvas2Point(p.x, p.y);
+                return [px + lo, py + lo];
+            };
+            let number = 0;
+            let last;
+            ctx.save();
+            ctx.font = '11px sans-serif';
+            ctx.lineWidth = 1;
+            for (const skey of ['beginConnection', 'mainSegments', 'endConnection', 'postSegments']) {
+                if (!this.shownSegments[skey] || !Array.isArray(this.symbolCurves[skey])) continue;
+                for (const c of this.symbolCurves[skey]) {
+                    if (c.points.length !== ElementTypes[c.type].len) continue;
+                    ++number;
+                    const first = c.points[0];
+                    const end = c.points[c.points.length - 1];
+                    const isLifted = !last || Math.abs(last.x - first.x) + Math.abs(last.y - first.y) > 2;
+                    const color = skey === 'postSegments' ? 'darkorange' : (isLifted ? 'red' : 'blue');
+                    let [sx, sy] = toCanvas(first);
+                    ctx.fillStyle = color;
+                    ctx.strokeStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                    if (c.type !== 'dot') {
+                        // the arrow shows where the pen comes to
+                        let before = c.points[c.points.length - 2];
+                        if (c.type === 'curve') before = Curves.cubicBezierPoint(0.85, c.points);
+                        if (c.type === 'curve3p') before = Curves.quadraticBezierPoint(0.85, c.points);
+                        let [ex, ey] = toCanvas(end);
+                        let [bx, by] = toCanvas(before);
+                        const angle = Math.atan2(ey - by, ex - bx);
+                        ctx.beginPath();
+                        ctx.moveTo(ex, ey);
+                        ctx.lineTo(ex - 8 * Math.cos(angle - 0.4), ey - 8 * Math.sin(angle - 0.4));
+                        ctx.moveTo(ex, ey);
+                        ctx.lineTo(ex - 8 * Math.cos(angle + 0.4), ey - 8 * Math.sin(angle + 0.4));
+                        ctx.stroke();
+                    }
+                    let middle = first;
+                    if (c.type === 'curve') middle = Curves.cubicBezierPoint(0.5, c.points);
+                    if (c.type === 'curve3p') middle = Curves.quadraticBezierPoint(0.5, c.points);
+                    if (c.type === 'line') middle = Curves.linearMove(0.5, first, end);
+                    let [mx, my] = toCanvas(middle);
+                    ctx.fillText(number, mx + 4, my - 3);
+                    last = end;
+                }
+            }
+            ctx.restore();
         },
         drawSymbolBackground() {
             let svfs = this.symbolCtx.fillStyle;

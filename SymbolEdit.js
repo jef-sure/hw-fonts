@@ -9,7 +9,7 @@ const SymbolEdit = {
             if (i.getAttribute('curve-x') !== null && i.getAttribute('curve-x') !== '') {
                 let cX = parseInt(i.getAttribute('curve-x'));
                 let cY = parseInt(i.getAttribute('curve-y'));
-                this.$store.commit('setSymbolMouseCaptured', {
+                this.fontStore.setSymbolMouseCaptured({
                     isCaptured: true,
                     x: undefined,
                     y: undefined,
@@ -19,19 +19,19 @@ const SymbolEdit = {
             }
         },
         isCodepointInFont(cp) {
-            return (cp in this.$store.state.font.codePoints) ? true : false;
+            return (cp in this.fontStore.font.codePoints) ? true : false;
         },
         isCurrentCodepoint(cp) {
-            return (parseInt(cp) === parseInt(this.$store.state.symbolEdit.codePoint)) ? true : false;
+            return (parseInt(cp) === parseInt(this.fontStore.symbolEdit.codePoint)) ? true : false;
         },
         selectCurrentSymbol(cp) {
-            this.$store.commit('setCurrentCodepoint', cp);
+            this.fontStore.setCurrentCodepoint(cp);
         },
         toggleCodepoint(cp) {
             if (this.isCodepointInFont(cp)) {
-                this.$store.commit('removeCodepoint', cp);
+                this.fontStore.removeCodepoint(cp);
             } else {
-                this.$store.commit('addCodepoint', cp);
+                this.fontStore.addCodepoint(cp);
             }
         },
         onCurveChange(event) {
@@ -39,30 +39,32 @@ const SymbolEdit = {
             if (false && i.getAttribute('curve-x') !== null && i.getAttribute('curve-x') !== '') {
                 let cX = parseInt(i.getAttribute('curve-x'));
                 let cY = parseInt(i.getAttribute('curve-y'));
-                this.$store.commit('setSymbolMouseXY', {
+                this.fontStore.setSymbolMouseXY({
                     x: undefined,
                     y: undefined,
                     curveX: cX,
                     curveY: cY,
                 });
-                this.$store.commit('setSymbolMouseXY', {
+                this.fontStore.setSymbolMouseXY({
                     x: undefined,
                     y: undefined,
                     curveX: cX,
                     curveY: cY,
                 });
             } else {
-                this.$store.commit('incrementDataVersion');
+                this.fontStore.incrementDataVersion();
             }
         },
         deleteCurve(curveIndex, segment) {
-            this.$store.commit('deleteCurve', {
+            this.fontStore.deleteCurve({
                 curveIndex: curveIndex,
                 segment: segment
             });
         },
         downloadFont() {
-            let blob = new Blob([JSON.stringify(this.$store.state.font, null, '    ')], {
+            this.fontStore.setAllSymbolMeasures();
+            this.fontStore.setElementLengths();
+            let blob = new Blob([JSON.stringify(this.fontStore.font, null, '    ')], {
                 type: 'application/json'
             });
             if (this.downloadUrl) URL.revokeObjectURL(this.downloadUrl);
@@ -72,12 +74,12 @@ const SymbolEdit = {
         uploadFont(event) {
             const reader = new FileReader();
             reader.onload = (evt) => {
-                this.$store.dispatch('uploadFont', evt.target.result);
+                this.fontStore.uploadFont(evt.target.result);
             };
             reader.readAsText(event.target.files[0]);
         },
         setSymbolsBlock() {
-            this.$store.commit('setSymbolsBlock', this.selectedBlockIndex);
+            this.fontStore.setSymbolsBlock(this.selectedBlockIndex);
         },
         isSegmentComplete(segment) {
             let curves = this.symbolCurves(segment);
@@ -87,125 +89,132 @@ const SymbolEdit = {
             return this.ElementTypes[lc.type].len === lc.points.length;
         },
         isShownSegment(segment) {
-            return this.$store.state.symbolEdit.shownSegments[segment];
+            return this.fontStore.symbolEdit.shownSegments[segment];
         },
         setShownSegment(event, segment) {
             let change = {};
-            change[segment] = !this.$store.state.symbolEdit.shownSegments[segment];
-            this.$store.commit('setShownSegment', change);
+            change[segment] = !this.fontStore.symbolEdit.shownSegments[segment];
+            this.fontStore.setShownSegment(change);
         },
         symbolCurves(segment) {
-            const cp = this.$store.state.symbolEdit.codePoint;
+            const cp = this.fontStore.symbolEdit.codePoint;
             if (!cp) return this.noCurves;
             if (segment === 'auxilarySegments')
-                return this.$store.state.font.auxilarySegments;
-            return this.$store.state.font.codePoints[cp][segment];
+                return this.fontStore.font.auxilarySegments;
+            return this.fontStore.font.codePoints[cp][segment];
         },
     },
     computed: {
+        ...Pinia.mapStores(useFontStore),
         newSegmentType: {
             get() {
-                return this.$store.state.symbolEdit.newSegmentType;
+                return this.fontStore.symbolEdit.newSegmentType;
             },
             set(type) {
-                this.$store.commit('setNewSegmentType', type);
+                this.fontStore.setNewSegmentType(type);
             },
         },
         newElementType: {
             get() {
-                return this.$store.state.symbolEdit.newElementType;
+                return this.fontStore.symbolEdit.newElementType;
             },
             set(type) {
-                this.$store.commit('setNewElementType', type);
+                this.fontStore.setNewElementType(type);
             },
         },
         font() {
-            return this.$store.state.font;
+            return this.fontStore.font;
         },
         fontName: {
             get() {
-                return this.$store.state.font.name;
+                return this.fontStore.font.name;
             },
             set(name) {
-                this.$store.commit('setFontName', name);
+                this.fontStore.setFontName(name);
             },
         },
         symbolOffsetX: {
             get() {
-                return this.$store.state.font.symbolOffsetX;
+                return this.fontStore.font.symbolOffsetX;
             },
             set(x) {
-                this.$store.commit('setSymbolOffset', {
+                this.fontStore.setSymbolOffset({
                     x: x,
-                    y: this.$store.state.font.symbolOffsetY
+                    y: this.fontStore.font.symbolOffsetY
                 });
             },
         },
         symbolOffsetY: {
             get() {
-                return this.$store.state.font.symbolOffsetY;
+                return this.fontStore.font.symbolOffsetY;
             },
             set(y) {
-                this.$store.commit('setSymbolOffset', {
-                    x: this.$store.state.font.symbolOffsetX,
+                this.fontStore.setSymbolOffset({
+                    x: this.fontStore.font.symbolOffsetX,
                     y: y,
                 });
             },
         },
         symbolSizeX: {
             get() {
-                return this.$store.state.font.symbolSizeX;
+                return this.fontStore.font.symbolSizeX;
             },
             set(x) {
-                this.$store.commit('setSymbolSize', {
+                this.fontStore.setSymbolSize({
                     x: x,
-                    y: this.$store.state.font.symbolSizeY
+                    y: this.fontStore.font.symbolSizeY
                 });
             },
         },
         symbolSizeY: {
             get() {
-                return this.$store.state.font.symbolSizeY;
+                return this.fontStore.font.symbolSizeY;
             },
             set(y) {
-                this.$store.commit('setSymbolSize', {
-                    x: this.$store.state.font.symbolSizeX,
+                this.fontStore.setSymbolSize({
+                    x: this.fontStore.font.symbolSizeX,
                     y: y
                 });
             },
         },
         baseLine: {
             get() {
-                return this.$store.state.font.baseLine;
+                return this.fontStore.font.baseLine;
             },
             set(y) {
-                this.$store.commit('setBaseLine', y);
+                this.fontStore.setBaseLine(y);
+            },
+        },
+        xHeight: {
+            get() {
+                return this.fontStore.font.xHeight;
+            },
+            set(height) {
+                this.fontStore.setXHeight(height);
             },
         },
         uploadErrorMessage: {
             get() {
-                return this.$store.state.uploadErrorMessage;
+                return this.fontStore.uploadErrorMessage;
             },
             set(m) {
-                this.$store.commit('setUploadErrorMessage', m);
+                this.fontStore.setUploadErrorMessage(m);
             },
         },
         fontCodePoints() {
-            let cps = Object.keys(this.$store.state.font.codePoints).map(e => parseInt(e));
-            cps.sort((a, b) => a - b);
-            return cps;
+            return this.fontStore.fontCodePoints;
         },
         fontSequence() {
-            return this.$store.state.fontSequence;
+            return this.fontStore.fontSequence;
         },
         symbolsBlockBegin() {
-            return this.$store.state.symbolsBlock.begin;
+            return this.fontStore.symbolsBlock.begin;
         },
         symbolsBlockWidth() {
-            return this.$store.state.symbolsBlock.blockWidth;
+            return this.fontStore.symbolsBlock.blockWidth;
         },
         symbolsBlockLength() {
-            return this.$store.state.symbolsBlock.blockLength;
+            return this.fontStore.symbolsBlock.blockLength;
         },
 
     },
@@ -274,6 +283,14 @@ const SymbolEdit = {
                             </td>
                             <td colspan="2">
                                 <input class="coord" v-model.number="baseLine" @blur="if(!this.baseLine) this.baseLine = 0;">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Height of lowercase letters above the base line">
+                                Lowercase height
+                            </td>
+                            <td colspan="2">
+                                <input class="coord" v-model.number="xHeight" @blur="if(!this.xHeight) this.xHeight = 0;">
                             </td>
                         </tr>
                         <tr>
