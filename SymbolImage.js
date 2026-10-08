@@ -39,11 +39,7 @@ const SymbolImage = {
             return this.fontStore.font.symbolOffsetY;
         },
         symbolSizeX() {
-            if (this.fontStore.font.widthType === 'fixed') {
-                return Math.round(this.fontStore.font.symbolSizeX * this.scale);
-            } else {
-                return Math.round(this.fontStore.font.codePoints[this.codePoint].width * this.scale);
-            }
+            return Math.round(this.fontStore.font.symbolSizeX * this.scale);
         },
         symbolSizeY() {
             return Math.round(this.fontStore.font.symbolSizeY * this.scale);

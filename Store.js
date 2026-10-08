@@ -137,7 +137,6 @@ const useFontStore = Pinia.defineStore('font', {
                 symbolOffsetY: 64,
                 symbolSizeX: 128,
                 symbolSizeY: 128,
-                widthType: 'fixed', // proportional
                 auxilarySegments: [],
                 codePoints: {
                     48: {
@@ -224,7 +223,7 @@ const useFontStore = Pinia.defineStore('font', {
                 thickness: 1,
                 color: '#000000',
                 joined: true,
-                proportional: false,
+                proportional: true, // symbols take their own width, otherwise each one takes the whole active area
                 speed: 20,
             }
         };

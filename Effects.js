@@ -43,7 +43,7 @@ const Effects = {
         },
         // symbols of a fixed width font take the whole active area, otherwise each one takes its own width
         isProportional() {
-            return this.effects.proportional || this.font.widthType !== 'fixed';
+            return this.effects.proportional;
         },
         // the text written by pen: points in font units in the order of writing
         writing() {
@@ -269,7 +269,7 @@ const Effects = {
                     <input class="coord" v-model.number="font.spaceWidth">
                 </label>
                 <label title="Each symbol takes its own width instead of the whole active area">
-                    <input type="checkbox" v-model="effects.proportional" :checked="isProportional" :disabled="font.widthType !== 'fixed'" /> Proportional width
+                    <input type="checkbox" v-model="effects.proportional" /> Proportional width
                 </label>
             </div>
             <div class="view-toolbar">
