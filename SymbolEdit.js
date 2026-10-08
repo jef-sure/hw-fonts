@@ -103,6 +103,10 @@ const SymbolEdit = {
                 return this.fontStore.font.auxilarySegments;
             return this.fontStore.font.codePoints[cp][segment];
         },
+        ownSpace(key) {
+            const symbol = this.fontStore.font.codePoints[this.fontStore.symbolEdit.codePoint];
+            return symbol && key in symbol ? symbol[key] : '';
+        },
     },
     computed: {
         ...Pinia.mapStores(useFontStore),
@@ -191,6 +195,38 @@ const SymbolEdit = {
             },
             set(height) {
                 this.fontStore.setXHeight(height);
+            },
+        },
+        symbolSpace: {
+            get() {
+                return this.fontStore.font.symbolSpace;
+            },
+            set(space) {
+                this.fontStore.setSymbolSpace(space);
+            },
+        },
+        spaceBefore: {
+            get() {
+                return this.ownSpace('spaceBefore');
+            },
+            set(space) {
+                this.fontStore.setOwnSpace('spaceBefore', space);
+            },
+        },
+        spaceAfter: {
+            get() {
+                return this.ownSpace('spaceAfter');
+            },
+            set(space) {
+                this.fontStore.setOwnSpace('spaceAfter', space);
+            },
+        },
+        spaceWidth: {
+            get() {
+                return this.fontStore.font.spaceWidth;
+            },
+            set(width) {
+                this.fontStore.setSpaceWidth(width);
             },
         },
         uploadErrorMessage: {
@@ -291,6 +327,33 @@ const SymbolEdit = {
                             </td>
                             <td colspan="2">
                                 <input class="coord" v-model.number="xHeight" @blur="if(!this.xHeight) this.xHeight = 0;">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Space after a symbol in the line when symbols take their own width, it is a part of the symbol's advance. A symbol may have its own one">
+                                Space between symbols
+                            </td>
+                            <td colspan="2">
+                                <input class="coord" v-model.number="symbolSpace" @blur="if(!this.symbolSpace) this.symbolSpace = 0;">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Own spaces of the edited symbol: before it (none when empty) and after it (the space between symbols when empty)">
+                                Space of this symbol
+                            </td>
+                            <td>Before:
+                                <input class="coord" v-model.number="spaceBefore" placeholder="0">
+                            </td>
+                            <td>After:
+                                <input class="coord" v-model.number="spaceAfter" :placeholder="symbolSpace">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td title="Advance of the space character when symbols take their own width">
+                                Space width
+                            </td>
+                            <td colspan="2">
+                                <input class="coord" v-model.number="spaceWidth" @blur="if(!this.spaceWidth) this.spaceWidth = 0;">
                             </td>
                         </tr>
                         <tr>

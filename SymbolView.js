@@ -173,6 +173,9 @@ const SymbolView = {
                                 <tr><td>Size</td><td>{{measures[current].width}} × {{measures[current].height}}</td></tr>
                                 <tr><td>Left, right</td><td>{{measures[current].left}}, {{measures[current].right}}</td></tr>
                                 <tr><td>Top, bottom from base line</td><td>{{measures[current].top}}, {{measures[current].bottom}}</td></tr>
+                                <tr><td title="Of the part within the line of lowercase letters, symbols are placed by it">Left, right in the line</td><td>{{measures[current].lineLeft}}, {{measures[current].lineRight}}</td></tr>
+                                <tr><td title="The place of the symbol in the line: its width in the line with the spaces before and after it">Advance</td><td>{{measures[current].advance}}</td></tr>
+                                <tr v-if="measures[current].upLeft !== null"><td title="Of the part above the line of lowercase letters, it keeps two tall symbols apart">Left, right above the line</td><td>{{measures[current].upLeft}}, {{measures[current].upRight}}</td></tr>
                             </template>
                             <tr v-else><td colspan="2" class="view-empty">Nothing is drawn yet</td></tr>
                             <tr v-for="e in currentElements">

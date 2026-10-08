@@ -1,3 +1,11 @@
+// number of points of a complete element
+const ElementPoints = {
+    dot: 1,
+    line: 2,
+    curve3p: 3,
+    curve: 4
+};
+
 class Curves {
     static cubicBezierPoint(t, points) {
         let cX = 3 * (points[1].x - points[0].x);
@@ -162,6 +170,59 @@ class Curves {
             ps = pe;
         }
         return Math.round(length * 100) / 100;
+    }
+
+    // number of straight pieces an element is drawn with on its own grid for the drawn line to stay within half a point
+    // from the curve itself. It is kept in the font: a program drawing it at another scale multiplies the number
+    // by the square root of the scale. A line is one piece, a dot has none
+    static elementPieces(element) {
+        const complete = ElementPoints[element.type] === element.points.length;
+        if (!complete || element.type === 'dot') return 0;
+        if (element.type === 'line') return 1;
+        const p = Curves.cubicPoints(element);
+        const at = (t) => {
+            const w = 1 - t;
+            const k = [w * w * w, 3 * w * w * t, 3 * w * t * t, t * t * t];
+            return {
+                x: k[0] * p[0].x + k[1] * p[1].x + k[2] * p[2].x + k[3] * p[3].x,
+                y: k[0] * p[0].y + k[1] * p[1].y + k[2] * p[2].y + k[3] * p[3].y
+            };
+        };
+        const tolerance = 0.5;
+        const samples = 8; // points of the curve checked within every piece
+        for (let pieces = 1;; pieces++) {
+            let fits = true;
+            for (let i = 0; i < pieces && fits; i++) {
+                const a = at(i / pieces);
+                const b = at((i + 1) / pieces);
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                const dd = dx * dx + dy * dy;
+                for (let n = 1; n < samples && fits; n++) {
+                    const c = at((i + n / samples) / pieces);
+                    // distance from the point of the curve to the piece
+                    let k = dd > 0 ? ((c.x - a.x) * dx + (c.y - a.y) * dy) / dd : 0;
+                    k = Math.min(Math.max(k, 0), 1);
+                    if (Math.hypot(c.x - a.x - k * dx, c.y - a.y - k * dy) > tolerance) fits = false;
+                }
+            }
+            if (fits) return pieces;
+        }
+    }
+
+    // number of points of the grid an element takes when it is drawn, every point is counted once
+    static elementPixels(element) {
+        let drawn = new Set();
+        const counter = {
+            drawPointCanvas(x, y) {
+                drawn.add(x + ',' + y);
+            },
+            drawLine(x1, y1, x2, y2) {
+                Draw.line(counter, x1, y1, x2, y2);
+            }
+        };
+        Draw.arrayOfSegments(counter, [element], 1);
+        return drawn.size;
     }
 
     static drawBezier3p(object, points, color) {

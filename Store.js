@@ -1,3 +1,9 @@
+// what a saved font file is: a converter reads these two keys to know whether it can convert the file.
+// The version is increased when a file of the new format cannot be read as one of the old format
+const FontFormat = {
+    name: 'hw-font',
+    version: 1
+};
 const SegmentTypes = {
     mainSegments: "Main segments",
     postSegments: "Postponed segments",
@@ -14,26 +20,34 @@ function getMouseCaptured(state, x, y) {
             if (skey !== 'auxilarySegments') return state.font.codePoints[cp][skey];
             return state.font.auxilarySegments;
         };
-        for (const fk in SegmentTypes) {
-            if (!state.symbolEdit.shownSegments[fk]) continue;
-            let sa = segmentsArray(fk);
-            if (!Array.isArray(sa)) continue;
-            for (let pi = 0; pi < sa.length; ++pi) {
-                const cs = sa[pi];
-                const c = cs.points;
-                for (let ci = 0; ci < c.length; ++ci) {
-                    const point = c[ci];
-                    if (point.x === x && point.y === y) {
-                        ret.push({
-                            element: cs.type, // curve, dot, line, curve3p 
-                            segment: fk, // mainSegments, postSegments, beginConnection, endConnection
-                            index: pi, // index inside segments
-                            pointIndex: ci // index inside element points
-                        });
+        let capture = (shown) => {
+            for (const fk in SegmentTypes) {
+                if ((state.symbolEdit.shownSegments[fk] ? true : false) !== shown) continue;
+                // hidden lines of the font are not parts of the symbol, they stay where they are
+                if (!shown && fk === 'auxilarySegments') continue;
+                let sa = segmentsArray(fk);
+                if (!Array.isArray(sa)) continue;
+                for (let pi = 0; pi < sa.length; ++pi) {
+                    const cs = sa[pi];
+                    const c = cs.points;
+                    for (let ci = 0; ci < c.length; ++ci) {
+                        const point = c[ci];
+                        if (point.x === x && point.y === y) {
+                            ret.push({
+                                element: cs.type, // curve, dot, line, curve3p 
+                                segment: fk, // mainSegments, postSegments, beginConnection, endConnection
+                                index: pi, // index inside segments
+                                pointIndex: ci // index inside element points
+                            });
+                        }
                     }
                 }
             }
-        }
+        };
+        capture(true);
+        // points of hidden segments of the symbol standing at the same place are moved together with the shown one:
+        // a connection stays joined to the symbol when its segments are not shown
+        if (ret.length) capture(false);
     }
     if (y === state.font.baseLine + state.font.symbolOffsetY) {
         ret.push({
@@ -112,9 +126,13 @@ const useFontStore = Pinia.defineStore('font', {
             uploadErrorMessage: '',
             fontSequence: 0,
             font: {
+                format: FontFormat.name,
+                formatVersion: FontFormat.version,
                 name: 'font',
                 baseLine: 100,
                 xHeight: 58, // height of lowercase letters above the base line
+                symbolSpace: 16, // space after a symbol in the line unless the symbol has its own spaceAfter, it is a part of the symbol's advance
+                spaceWidth: 84, // advance of the space character when symbols take their own width
                 symbolOffsetX: 64,
                 symbolOffsetY: 64,
                 symbolSizeX: 128,
@@ -206,7 +224,6 @@ const useFontStore = Pinia.defineStore('font', {
                 thickness: 1,
                 color: '#000000',
                 joined: true,
-                jointSpace: 16,
                 proportional: false,
                 speed: 20,
             }
@@ -218,10 +235,23 @@ const useFontStore = Pinia.defineStore('font', {
                 let myResponse = JSON.parse(text);
                 let font = {};
                 let absent = [];
+                if ('format' in myResponse && myResponse.format !== FontFormat.name) {
+                    this.setUploadErrorMessage('Not a font of this editor, its format is ' + myResponse.format);
+                    return;
+                }
+                if (myResponse.formatVersion > FontFormat.version) {
+                    this.setUploadErrorMessage('The font is of format version ' + myResponse.formatVersion + ', this editor knows versions up to ' + FontFormat.version);
+                    return;
+                }
                 // keys added to the format later, fonts saved before have no such keys
                 const defaults = {
-                    xHeight: 58
+                    format: FontFormat.name,
+                    formatVersion: FontFormat.version,
+                    xHeight: 58,
+                    symbolSpace: 16
                 };
+                // a space used to take the whole active area
+                if ('symbolSizeX' in myResponse) defaults.spaceWidth = myResponse.symbolSizeX - ('symbolSpace' in myResponse ? myResponse.symbolSpace : defaults.symbolSpace);
                 for (let fk in this.font) {
                     if (fk in myResponse)
                         font[fk] = myResponse[fk];
@@ -233,6 +263,8 @@ const useFontStore = Pinia.defineStore('font', {
                 if (absent.length) {
                     this.setUploadErrorMessage('Bad font format. Absent keys: ' + absent.join(", "));
                 } else {
+                    // the editor saves a font in its own version of the format
+                    font.formatVersion = FontFormat.version;
                     this.setFont(font);
                 }
             } catch (e) {}
@@ -389,6 +421,21 @@ const useFontStore = Pinia.defineStore('font', {
         setXHeight(height) {
             this.font.xHeight = height;
         },
+        setSpaceWidth(width) {
+            this.font.spaceWidth = width;
+        },
+        setSymbolSpace(space) {
+            this.font.symbolSpace = space;
+            this.symbolEdit.dataVersion++;
+        },
+        // own space of the edited symbol, key is spaceBefore or spaceAfter, an empty value takes it away
+        setOwnSpace(key, space) {
+            const symbol = this.font.codePoints[this.symbolEdit.codePoint];
+            if (!symbol) return;
+            if (Number.isFinite(space) && space >= 0) symbol[key] = space;
+            else delete symbol[key];
+            this.symbolEdit.dataVersion++;
+        },
         setBaseLine(y) {
             this.font.baseLine = y;
             this.symbolEdit.dataVersion++;
@@ -421,12 +468,13 @@ const useFontStore = Pinia.defineStore('font', {
             for (const cp in this.font.codePoints) {
                 const m = SymbolMeasure.ofSymbol(this.font, cp, ['mainSegments', 'postSegments']);
                 if (!m) continue;
-                for (const key of ['width', 'top', 'bottom', 'left', 'right', 'lineLeft', 'lineRight', 'lineWidth']) {
+                for (const key of SymbolMeasure.keys()) {
                     this.font.codePoints[cp][key] = m[key];
                 }
             }
         },
-        // lengths of all elements are kept in the font for drawing it by other programs
+        // lengths of all elements, numbers of pieces to draw them with and numbers of points they take on the grid
+        // are kept in the font for drawing it by other programs
         setElementLengths() {
             let segments = [this.font.auxilarySegments];
             for (const cp in this.font.codePoints) {
@@ -436,28 +484,17 @@ const useFontStore = Pinia.defineStore('font', {
             }
             for (const sa of segments) {
                 if (!Array.isArray(sa)) continue;
-                for (const c of sa) c.length = Curves.elementLength(c);
+                for (const c of sa) {
+                    c.length = Curves.elementLength(c);
+                    c.pieces = Curves.elementPieces(c);
+                    c.pixels = Curves.elementPixels(c);
+                }
             }
         },
-        setSymbolMeasures({
-            codePoint,
-            width,
-            top,
-            bottom,
-            left,
-            right,
-            lineLeft,
-            lineRight,
-            lineWidth
-        }) {
-            this.font.codePoints[codePoint].width = width;
-            this.font.codePoints[codePoint].top = top;
-            this.font.codePoints[codePoint].bottom = bottom;
-            this.font.codePoints[codePoint].left = left;
-            this.font.codePoints[codePoint].right = right;
-            this.font.codePoints[codePoint].lineLeft = lineLeft;
-            this.font.codePoints[codePoint].lineRight = lineRight;
-            this.font.codePoints[codePoint].lineWidth = lineWidth;
+        setSymbolMeasures(measures) {
+            for (const key of SymbolMeasure.keys()) {
+                this.font.codePoints[measures.codePoint][key] = measures[key];
+            }
         }
     },
     getters: {

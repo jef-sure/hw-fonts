@@ -42,9 +42,6 @@ const Effects = {
             return this.effects.thickness > 0 ? this.effects.thickness : 1;
         },
         // symbols of a fixed width font take the whole active area, otherwise each one takes its own width
-        jointSpace() {
-            return parseInt(this.effects.jointSpace) || 0;
-        },
         isProportional() {
             return this.effects.proportional || this.font.widthType !== 'fixed';
         },
@@ -73,6 +70,9 @@ const Effects = {
                     };
                 });
                 let x = 0;
+                // where the part of the line above lowercase letters is taken up to with the space after it,
+                // null while nothing is written there
+                let upX = null;
                 // the last segment of the previous symbol's end connection as a cubic curve in the line:
                 // it is joined with the first segment of the next symbol's begin connection
                 let joint = null;
@@ -90,28 +90,32 @@ const Effects = {
                     if (!glyph.inFont) {
                         writePostponed();
                         if (glyph.char.trim() && !missing.includes(glyph.char)) missing.push(glyph.char);
-                        x += font.symbolSizeX;
+                        // a space has its own width, a symbol which is not in the font takes the whole active area
+                        x += this.isProportional && !glyph.char.trim() ? font.spaceWidth : font.symbolSizeX;
+                        upX = null;
                         joint = null;
                         return;
                     }
                     const joinedPrev = isJoined(glyphs[i - 1], glyph);
                     const joinedNext = isJoined(glyph, glyphs[i + 1]);
-                    // a connection which joins nothing is written as it is drawn: it is the tail a word begins or ends with,
-                    // such a tail takes place in the line as the symbol itself does
-                    const beginTail = this.effects.joined && !joinedPrev ? segmentsOf(glyph, 'beginConnection') : [];
-                    const endTail = this.effects.joined && !joinedNext ? segmentsOf(glyph, 'endConnection') : [];
-                    let measured = ['mainSegments', 'postSegments'];
-                    if (beginTail.length) measured.push('beginConnection');
-                    if (endTail.length) measured.push('endConnection');
-                    const box = SymbolMeasure.ofSymbol(font, glyph.codePoint, measured);
+                    // connections are written only to join two symbols: one which joins nothing is not written at all,
+                    // so a symbol always takes the same place in the line. The only exception is a letter after a letter
+                    // of joined writing which has no end connection: the pen cannot come out of that one, so the next
+                    // letter is begun with its whole begin connection, within the space between them
+                    const prev = glyphs[i - 1];
+                    const afterDeadEnd = this.effects.joined && hasSegments(prev, 'beginConnection') && !hasSegments(prev, 'endConnection');
+                    const beginTail = afterDeadEnd ? segmentsOf(glyph, 'beginConnection') : [];
+                    const box = SymbolMeasure.ofSymbol(font, glyph.codePoint, ['mainSegments', 'postSegments']);
+                    const spaces = SymbolMeasure.spaces(font, font.codePoints[glyph.codePoint]);
                     if (!joinedPrev) writePostponed();
                     pen.shiftX = x - font.symbolOffsetX;
                     pen.shiftY = y - font.symbolOffsetY;
                     if (this.isProportional && box) {
-                        // a symbol takes its writing width in the line, the first one in the line is written whole,
-                        // joined symbols need a little space between them for the curve joining them
-                        pen.shiftX = x - font.symbolOffsetX - (x > 0 ? box.lineLeft : box.left);
-                        if (joinedPrev) pen.shiftX += this.jointSpace;
+                        // a symbol begins where the advance of the previous one ends, after its own space before it,
+                        // the first one in the line is written whole and without that space,
+                        // two tall symbols are also kept apart by their parts above the line of lowercase letters
+                        pen.shiftX = x - font.symbolOffsetX - (x > 0 ? box.lineLeft - spaces.before : box.left);
+                        if (upX !== null && box.upLeft !== null) pen.shiftX = Math.max(pen.shiftX, upX - font.symbolOffsetX - box.upLeft + spaces.before);
                     }
                     const inLine = (point) => ({
                         x: point.x + pen.shiftX,
@@ -133,7 +137,6 @@ const Effects = {
                     }
                     Draw.arrayOfSegments(pen, beginTail, 1);
                     Draw.arrayOfSegments(pen, segmentsOf(glyph, 'mainSegments'), 1);
-                    Draw.arrayOfSegments(pen, endTail, 1);
                     joint = null;
                     if (joinedNext) {
                         const ec = segmentsOf(glyph, 'endConnection');
@@ -146,7 +149,10 @@ const Effects = {
                         shiftY: pen.shiftY
                     });
                     if (this.isProportional && box) {
-                        x = box.lineRight + font.symbolOffsetX + pen.shiftX + 1;
+                        // the advance is the writing width with the space after the symbol, this space is also the room
+                        // for the curve joining two symbols
+                        x = box.lineLeft + font.symbolOffsetX + pen.shiftX + box.lineWidth + spaces.after;
+                        if (box.upRight !== null) upX = Math.max(upX === null ? 0 : upX, box.upRight + font.symbolOffsetX + pen.shiftX + 1 + spaces.after);
                         const right = box.right + font.symbolOffsetX + pen.shiftX + 1;
                         if (right > width) width = right;
                     } else {
@@ -245,7 +251,7 @@ const Effects = {
             </div>
             <div class="view-toolbar">
                 <label>Scale
-                    <input type="range" min="0.25" max="3" step="0.25" v-model.number="effects.scale"> {{scale}}x
+                    <input type="range" min="0.1" max="3" step="0.05" v-model.number="effects.scale"> {{scale}}x
                 </label>
                 <label>Line thickness
                     <input type="range" min="1" max="12" step="0.5" v-model.number="effects.thickness"> {{thickness}}
@@ -256,8 +262,11 @@ const Effects = {
                 <label title="Join a symbol having an end connection with the next one having a begin connection, without taking the pen off">
                     <input type="checkbox" v-model="effects.joined" /> Joined letters
                 </label>
-                <label v-if="effects.joined && isProportional" title="Space between joined symbols for the curve joining them">Joint space
-                    <input class="coord" v-model.number="effects.jointSpace">
+                <label v-if="isProportional" title="Space after a symbol which has no own one, kept in the font. It is also the room for the curve joining two symbols">Space between symbols
+                    <input class="coord" v-model.number="font.symbolSpace">
+                </label>
+                <label v-if="isProportional" title="Advance of the space character, kept in the font">Space width
+                    <input class="coord" v-model.number="font.spaceWidth">
                 </label>
                 <label title="Each symbol takes its own width instead of the whole active area">
                     <input type="checkbox" v-model="effects.proportional" :checked="isProportional" :disabled="font.widthType !== 'fixed'" /> Proportional width

@@ -73,7 +73,7 @@ const SymbolCanvas = {
             if (this.symbolCurves !== this.noCurves) {
                 const segments = ['mainSegments', 'postSegments'];
                 const m = SymbolMeasure.ofSymbol(this.fontStore.font, this.fontStore.symbolEdit.codePoint, segments);
-                if (m && ['width', 'top', 'bottom', 'left', 'right', 'lineLeft', 'lineRight', 'lineWidth'].some(key => m[key] !== parseInt(this.symbolCurves[key]))) {
+                if (m && SymbolMeasure.keys().some(key => m[key] !== this.symbolCurves[key])) {
                     this.fontStore.setSymbolMeasures(Object.assign({
                         codePoint: this.fontStore.symbolEdit.codePoint
                     }, m));
