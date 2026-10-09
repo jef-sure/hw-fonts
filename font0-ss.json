@@ -153,7 +153,8 @@
             "lineWidth": 14,
             "upLeft": 24,
             "upRight": 39,
-            "advance": 30
+            "advance": 42,
+            "spaceBefore": 12
         },
         "34": {
             "mainSegments": [
@@ -393,7 +394,8 @@
             "lineWidth": 6,
             "upLeft": 15,
             "upRight": 55,
-            "advance": 22
+            "advance": 24,
+            "spaceAfter": 18
         },
         "41": {
             "mainSegments": [
@@ -473,7 +475,9 @@
             "lineWidth": 2,
             "upLeft": null,
             "upRight": null,
-            "advance": 18
+            "advance": 42,
+            "spaceBefore": 12,
+            "spaceAfter": 28
         },
         "45": {
             "mainSegments": [
@@ -537,7 +541,9 @@
             "lineWidth": 1,
             "upLeft": null,
             "upRight": null,
-            "advance": 17
+            "advance": 41,
+            "spaceBefore": 12,
+            "spaceAfter": 28
         },
         "48": {
             "top": -121,
@@ -1461,7 +1467,9 @@
             "lineWidth": 12,
             "upLeft": null,
             "upRight": null,
-            "advance": 28
+            "advance": 52,
+            "spaceBefore": 12,
+            "spaceAfter": 28
         },
         "59": {
             "mainSegments": [
@@ -1511,7 +1519,9 @@
             "lineWidth": 12,
             "upLeft": null,
             "upRight": null,
-            "advance": 28
+            "advance": 52,
+            "spaceBefore": 12,
+            "spaceAfter": 28
         },
         "63": {
             "mainSegments": [
@@ -1565,7 +1575,8 @@
             "lineWidth": 27,
             "upLeft": 18,
             "upRight": 59,
-            "advance": 43
+            "advance": 55,
+            "spaceBefore": 12
         },
         "65": {
             "mainSegments": [
@@ -12492,8 +12503,9 @@
             "lineWidth": 41,
             "upLeft": 23,
             "upRight": 88,
-            "advance": 65,
-            "spaceBefore": 8
+            "advance": 73,
+            "spaceBefore": 8,
+            "spaceAfter": 24
         },
         "1061": {
             "mainSegments": [
@@ -18985,7 +18997,9 @@
             "lineWidth": 41,
             "upLeft": null,
             "upRight": null,
-            "advance": 57
+            "advance": 81,
+            "spaceBefore": 12,
+            "spaceAfter": 28
         }
     }
 }
