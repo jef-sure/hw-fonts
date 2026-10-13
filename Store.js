@@ -221,10 +221,14 @@ const useFontStore = Pinia.defineStore('font', {
                 text: '',
                 scale: 1,
                 thickness: 1,
+                pen: 'points', // what draws the text: points of the grid, or the hard or the soft pen of the dgx library
+                penWidth: 2, // of the pen of dgx, pixels
+                zoom: 1, // a pixel of the pen of dgx is shown this many times larger
                 color: '#000000',
                 joined: true,
                 proportional: true, // symbols take their own width, otherwise each one takes the whole active area
-                speed: 20,
+                tempo: 1500, // of writing: effort the pen spends a second, as the dgx library paces it
+                bend: 6, // effort of one straight piece of a curve
             }
         };
     },

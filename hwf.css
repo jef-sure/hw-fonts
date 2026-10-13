@@ -131,6 +131,10 @@
     display: block;
 }
 
+.effects-text canvas.effects-pixels {
+    image-rendering: pixelated;
+}
+
 .effects-missing {
     color: #dc3545;
 }

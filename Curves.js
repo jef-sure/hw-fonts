@@ -148,6 +148,36 @@ class Curves {
         }, p3];
     }
 
+    // number of straight pieces for a cubic curve which has none kept in the font, the curve joining two symbols,
+    // counted as the dgx library does it. A chord over 1/n of the parameter is not further from the curve than
+    // an eighth of its second derivative, the largest at one of the ends, over n squared: within half a point
+    static cubicPieces(p) {
+        const k1x = 3 * (p[0].x - 2 * p[1].x + p[2].x);
+        const k1y = 3 * (p[0].y - 2 * p[1].y + p[2].y);
+        const k0x = p[3].x - 3 * p[2].x + 3 * p[1].x - p[0].x;
+        const k0y = p[3].y - 3 * p[2].y + 3 * p[1].y - p[0].y;
+        const bend = Math.max(2 * Math.hypot(k1x, k1y), 2 * Math.hypot(3 * k0x + k1x, 3 * k0y + k1y));
+        return Math.min(Math.max(Math.ceil(Math.sqrt(bend / 4)), 1), 255);
+    }
+
+    // length of such a curve: that of its pieces
+    static cubicLength(p, pieces) {
+        let length = 0;
+        let ps = p[0];
+        for (let i = 1; i <= pieces; i++) {
+            const t = i / pieces;
+            const w = 1 - t;
+            const k = [w * w * w, 3 * w * w * t, 3 * w * t * t, t * t * t];
+            const pe = {
+                x: k[0] * p[0].x + k[1] * p[1].x + k[2] * p[2].x + k[3] * p[3].x,
+                y: k[0] * p[0].y + k[1] * p[1].y + k[2] * p[2].y + k[3] * p[3].y
+            };
+            length += Math.hypot(pe.x - ps.x, pe.y - ps.y);
+            ps = pe;
+        }
+        return length;
+    }
+
     // length of an element as it is drawn: by straight pieces between rounded points
     static elementLength(element) {
         const points = element.points;
